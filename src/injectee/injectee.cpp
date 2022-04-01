@@ -2,12 +2,16 @@
 #include <winsock2.h>
 #include <WS2tcpip.h>
 #include "minhook.hpp"
+#include "rpc.hpp"
+
+using namespace std;
 
 struct hook_connect : minhook::api<connect, hook_connect> {
-    static int WINAPI detour(SOCKET s, const sockaddr* name, int namelen) {
+    static int detour(SOCKET s, const sockaddr* name, int namelen) {
         if (name->sa_family == AF_INET) {
             auto v4 = (const sockaddr_in*)name;
-            std::cout << s << " -> " << inet_ntoa(v4->sin_addr) << ":" << ntohs(v4->sin_port) << "\n";
+            auto addr = inet_ntoa(v4->sin_addr);
+            std::cout << s << " -> " << addr << ":" << ntohs(v4->sin_port) << endl;
         }
         return original(s, name, namelen);
     }
@@ -21,7 +25,6 @@ BOOL WINAPI DllMain(HINSTANCE dll_handle, DWORD reason, LPVOID reserved)
         minhook::init();
         hook_connect::create();
         minhook::enable();
-        std::cout << "inited\n";
         break;
 
     case DLL_PROCESS_DETACH:

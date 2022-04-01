@@ -1,21 +1,21 @@
 #include <iostream>
 #include <string>
+#include <filesystem>
 #include "injector.hpp"
+#include "rpc.hpp"
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-    if (argc < 3) {
-        cout << "expected dll path and process pid" << endl;
+    if (argc < 2) {
+        cout << "expected process pid" << endl;
     }
 
-    const char *dll = argv[1];
-    DWORD pid = stoul(argv[2]);
+    
+    DWORD pid = stoul(argv[1]);
 
-    cout << "inject '" << dll << "' to process " << pid << endl;
-
-    if (injector::inject(pid, dll)) {
+    if (injector::inject(pid)) {
         cout << "success" << endl;
     }
     else {
