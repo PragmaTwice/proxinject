@@ -1,4 +1,5 @@
 #include "async_io.hpp"
+#include "queue.hpp"
 #include "schema.hpp"
 #include "winraii.hpp"
 #include <iostream>
@@ -7,9 +8,12 @@ struct injectee_client : std::enable_shared_from_this<injectee_client> {
   tcp::socket socket_;
   tcp::endpoint endpoint_;
   asio::steady_timer timer_;
+  blocking_queue<InjecteeMessage> &queue_;
 
-  injectee_client(asio::io_context &io_context, const tcp::endpoint &endpoint)
-      : socket_(io_context), endpoint_(endpoint), timer_(io_context) {
+  injectee_client(asio::io_context &io_context, const tcp::endpoint &endpoint,
+                  blocking_queue<InjecteeMessage> &queue)
+      : socket_(io_context), endpoint_(endpoint), timer_(io_context),
+        queue_(queue) {
     timer_.expires_at(std::chrono::steady_clock::time_point::max());
   }
 
@@ -20,6 +24,7 @@ struct injectee_client : std::enable_shared_from_this<injectee_client> {
         socket_, create_message<InjecteeMessage, "pid">(GetCurrentProcessId()));
 
     asio::co_spawn(socket_.get_executor(), reader(), asio::detached);
+    asio::co_spawn(socket_.get_executor(), writer(), asio::detached);
   }
 
   asio::awaitable<void> reader() {
@@ -30,6 +35,17 @@ struct injectee_client : std::enable_shared_from_this<injectee_client> {
             socket_.get_executor(),
             [this, msg = std::move(msg)] { return process(msg); },
             asio::detached);
+      }
+    } catch (std::exception &) {
+      stop();
+    }
+  }
+
+  asio::awaitable<void> writer() {
+    try {
+      InjecteeMessage msg;
+      while (queue_.pop(msg)) {
+        co_await async_write_message(socket_, msg);
       }
     } catch (std::exception &) {
       stop();

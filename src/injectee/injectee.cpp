@@ -28,11 +28,14 @@ bool is_localhost(const sockaddr *name) {
   return false;
 }
 
+blocking_queue<InjecteeMessage> queue;
+
 struct hook_connect : minhook::api<connect, hook_connect> {
   static int detour(SOCKET s, const sockaddr *name, int namelen) {
     if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) &&
         !is_localhost(name)) {
-      std::cout << s << " -> " << get_addr_string(name) << std::endl;
+      queue.push(create_message<InjecteeMessage, "connect">(
+          InjecteeConnect{s, get_addr_string(name)}));
     }
     return original(s, name, namelen);
   }
@@ -41,7 +44,7 @@ struct hook_connect : minhook::api<connect, hook_connect> {
 void client(HINSTANCE dll_handle) {
   asio::io_context io_context(1);
 
-  injectee_client c(io_context, proxinject_endpoint);
+  injectee_client c(io_context, proxinject_endpoint, queue);
   asio::co_spawn(io_context, c.start(), asio::detached);
 
   io_context.run();

@@ -1,8 +1,8 @@
 #include "async_io.hpp"
 #include "schema.hpp"
 #include <asio.hpp>
-#include <map>
 #include <iostream>
+#include <map>
 
 using tcp = asio::ip::tcp;
 
@@ -74,10 +74,13 @@ struct injectee_session : injectee_client,
   }
 
   asio::awaitable<void> process(const InjecteeMessage &msg) {
-    if (msg["opcode"_f] == "pid") {
-      pid_ = msg["pid"_f].value();
+    if (auto v = compare_message<"pid">(msg)) {
+      pid_ = *v;
       server_.open(pid_, shared_from_this());
       std::cout << "recv pid " << pid_ << std::endl;
+    } else if (auto v = compare_message<"connect">(msg)) {
+      std::cout << pid_ << ": " << (*v)["handle"_f].value() << ", "
+                << (*v)["addr"_f].value() << std::endl;
     }
 
     co_return;
