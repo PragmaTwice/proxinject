@@ -55,6 +55,7 @@ struct injectee_client : std::enable_shared_from_this<injectee_client> {
   asio::awaitable<void> process(const InjectorMessage &msg) { co_return; }
 
   void stop() {
+    queue_.shutdown();
     socket_.close();
     timer_.cancel();
   }

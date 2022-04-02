@@ -35,7 +35,7 @@ struct hook_connect : minhook::api<connect, hook_connect> {
     if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) &&
         !is_localhost(name)) {
       queue.push(create_message<InjecteeMessage, "connect">(
-          InjecteeConnect{s, get_addr_string(name)}));
+          InjecteeConnect{(std::int32_t)s, get_addr_string(name)}));
     }
     return original(s, name, namelen);
   }
