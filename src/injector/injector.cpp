@@ -1,24 +1,49 @@
+#include <asio.hpp>
+
+#include "injector.hpp"
+#include "server.hpp"
+#include <filesystem>
 #include <iostream>
 #include <string>
-#include <filesystem>
-#include "injector.hpp"
-#include "rpc.hpp"
 
-using namespace std;
+injector_server server;
 
-int main(int argc, char *argv[])
-{
-    if (argc < 2) {
-        cout << "expected process pid" << endl;
+void do_server() {
+  asio::io_context io_context(1);
+
+  asio::co_spawn(
+      io_context,
+      listener(server, tcp::acceptor(io_context, proxinject_endpoint)),
+      asio::detached);
+
+  asio::signal_set signals(io_context, SIGINT, SIGTERM);
+  signals.async_wait([&](auto, auto) { io_context.stop(); });
+
+  io_context.run();
+}
+
+int main(int argc, char *argv[]) {
+  std::thread(do_server).detach();
+  std::string opcode;
+
+  while (true) {
+    std::cout << "> ";
+    std::cin >> opcode;
+    if (!std::cin.good())
+      break;
+
+    if (opcode == "exit") {
+      exit(0);
+    } else if (opcode == "load") {
+      DWORD pid;
+      std::cin >> pid;
+      std::cout << (injector::inject(pid) ? "success" : "failed") << std::endl;
+    } else if (opcode == "unload") {
+      DWORD pid;
+      std::cin >> pid;
+      std::cout << (server.close(pid) ? "success" : "failed") << std::endl;
+    } else {
+      std::cout << "unknown command" << std::endl;
     }
-
-    
-    DWORD pid = stoul(argv[1]);
-
-    if (injector::inject(pid)) {
-        cout << "success" << endl;
-    }
-    else {
-        cout << "failed" << endl;
-    }
+  }
 }
