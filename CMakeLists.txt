@@ -12,7 +12,7 @@ FetchContent_Declare(minhook
 set(BUILD_TESTS OFF)
 FetchContent_Declare(protopuf
 	GIT_REPOSITORY https://github.com/PragmaTwice/protopuf
-	GIT_TAG 9fd6668220f60a1523f2e83b610558b8a164f24d
+	GIT_TAG 6b795c2cafef4cdf85854158a25356c6055ab635
 )
 
 FetchContent_MakeAvailable(minhook protopuf)

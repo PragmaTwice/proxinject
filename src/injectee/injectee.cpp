@@ -12,11 +12,8 @@ struct hook_connect : minhook::api<connect, hook_connect> {
     if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) &&
         !is_localhost(name)) {
       if (auto v = to_ip_addr(name)) {
-        auto proxy =
-            static_cast<const InjecteeConnect::get_type_by_name<"proxy"> &>(
-                config.get_addr());
         queue.push(create_message<InjecteeMessage, "connect">(
-            InjecteeConnect{(std::uint32_t)s, *v, proxy}));
+            InjecteeConnect{(std::uint32_t)s, *v, config.get_addr()}));
       }
     }
     return original(s, name, namelen);
