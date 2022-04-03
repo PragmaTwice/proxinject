@@ -42,6 +42,10 @@ int main(int argc, char *argv[]) {
       DWORD pid;
       std::cin >> pid;
       std::cout << (server.close(pid) ? "success" : "failed") << std::endl;
+    } else if (opcode == "list") {
+      for (const auto &[pid, _] : server.clients) {
+        std::cout << pid << std::endl;
+      }
     } else {
       std::cout << "unknown command" << std::endl;
     }

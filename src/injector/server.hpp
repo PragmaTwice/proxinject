@@ -79,8 +79,9 @@ struct injectee_session : injectee_client,
       server_.open(pid_, shared_from_this());
       std::cout << "recv pid " << pid_ << std::endl;
     } else if (auto v = compare_message<"connect">(msg)) {
-      std::cout << pid_ << ": " << (*v)["handle"_f].value() << ", "
-                << (*v)["addr"_f].value() << std::endl;
+      auto [addr, port] = to_asio((*v)["addr"_f].value());
+      std::cout << pid_ << ": " << (*v)["handle"_f].value() << ", " << addr
+                << ":" << port << std::endl;
     }
 
     co_return;
