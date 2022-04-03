@@ -66,8 +66,9 @@ struct injectee_client : std::enable_shared_from_this<injectee_client> {
 
   asio::awaitable<void> writer() {
     try {
-      InjecteeMessage msg;
-      while (queue_.pop(msg)) {
+      ;
+      while (true) {
+        InjecteeMessage msg = co_await queue_.pop();
         co_await async_write_message(socket_, msg);
       }
     } catch (std::exception &) {
@@ -84,7 +85,6 @@ struct injectee_client : std::enable_shared_from_this<injectee_client> {
   }
 
   void stop() {
-    queue_.shutdown();
     socket_.close();
     timer_.cancel();
   }

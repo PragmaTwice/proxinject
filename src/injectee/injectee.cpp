@@ -1,20 +1,20 @@
 #include "client.hpp"
 #include "minhook.hpp"
+#include "socks5.hpp"
 #include "winnet.hpp"
 #include <iostream>
 #include <string>
-#include "socks5.hpp"
 
-blocking_queue<InjecteeMessage> queue;
+std::unique_ptr<blocking_queue<InjecteeMessage>> queue = nullptr;
 injectee_config config;
 
 struct hook_connect : minhook::api<connect, hook_connect> {
   static int detour(SOCKET s, const sockaddr *name, int namelen) {
     if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) &&
-        !is_localhost(name)) {
+        !is_localhost(name) && queue) {
       if (auto v = to_ip_addr(name)) {
         auto proxy = config.get_addr();
-        queue.push(create_message<InjecteeMessage, "connect">(
+        queue->push(create_message<InjecteeMessage, "connect">(
             InjecteeConnect{(std::uint32_t)s, *v, proxy}));
         if (proxy) {
           if (auto addr = to_sockaddr(*proxy)) {
@@ -26,7 +26,7 @@ struct hook_connect : minhook::api<connect, hook_connect> {
               return SOCKET_ERROR;
             if (socks5_request(s, name) != SOCKS_SUCCESS)
               return SOCKET_ERROR;
-            
+
             return 0;
           }
         }
@@ -39,7 +39,9 @@ struct hook_connect : minhook::api<connect, hook_connect> {
 void do_client(HINSTANCE dll_handle) {
   asio::io_context io_context(1);
 
-  injectee_client c(io_context, proxinject_endpoint, queue, config);
+  queue = std::make_unique<blocking_queue<InjecteeMessage>>(io_context, 1024);
+
+  injectee_client c(io_context, proxinject_endpoint, *queue, config);
   asio::co_spawn(io_context, c.start(), asio::detached);
 
   io_context.run();

@@ -37,7 +37,12 @@ int main(int argc, char *argv[]) {
     } else if (opcode == "load") {
       DWORD pid;
       std::cin >> pid;
-      std::cout << (injector::inject(pid) ? "success" : "failed") << std::endl;
+      if (server.clients.contains(pid)) {
+        std::cout << "already loaded" << std::endl;
+      } else {
+        std::cout << (injector::inject(pid) ? "success" : "failed")
+                  << std::endl;
+      }
     } else if (opcode == "unload") {
       DWORD pid;
       std::cin >> pid;
@@ -60,8 +65,22 @@ int main(int argc, char *argv[]) {
       } else {
         std::cout << "empty" << std::endl;
       }
+    } else if (opcode == "help") {
+      std::cout
+          << "commands:" << std::endl
+          << "`load <pid>`: inject to a process" << std::endl
+          << "`unload <pid>`: restore an injected process" << std::endl
+          << "`list`: list all injected process ids" << std::endl
+          << "`set-config <address> <port>`: set proxy config for all injected "
+             "processes"
+          << std::endl
+          << "`clear-config`: remove proxy config for all injected processes"
+          << std::endl
+          << "`get-config`: dump current proxy config" << std::endl
+          << "`help`: show help messages" << std::endl
+          << "`exit`: quit the program" << std::endl;
     } else {
-      std::cout << "unknown command" << std::endl;
+      std::cout << "unknown command, try `help`" << std::endl;
     }
   }
 }
