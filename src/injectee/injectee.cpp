@@ -32,8 +32,8 @@ struct hook_connect : minhook::api<connect, hook_connect> {
         queue->push(create_message<InjecteeMessage, "connect">(
             InjecteeConnect{(std::uint32_t)s, *v, proxy}));
         if (proxy) {
-          if (auto addr = to_sockaddr(*proxy)) {
-            auto ret = original(s, &*addr, sizeof(sockaddr));
+          if (auto [addr, addr_size] = to_sockaddr(*proxy); addr) {
+            auto ret = original(s, &*addr, addr_size);
             if (ret)
               return ret;
 

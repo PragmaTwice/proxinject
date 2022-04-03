@@ -37,27 +37,25 @@ std::optional<IpAddr> to_ip_addr(const sockaddr *name) {
   return std::nullopt;
 }
 
-std::optional<sockaddr> to_sockaddr(const IpAddr &addr) {
+std::pair<std::unique_ptr<sockaddr>, size_t> to_sockaddr(const IpAddr &addr) {
   if (auto v = addr["v4_addr"_f]) {
-    auto res = sockaddr();
-    auto v4 = (sockaddr_in *)&res;
-    v4->sin_family = AF_INET;
-    v4->sin_addr.s_addr = htonl(v.value());
-    v4->sin_port = htons(addr["port"_f].value());
-    return res;
+    auto res = new sockaddr_in();
+    res->sin_family = AF_INET;
+    res->sin_addr.s_addr = htonl(v.value());
+    res->sin_port = htons(addr["port"_f].value());
+    return {std::unique_ptr<sockaddr>{(sockaddr *)res}, sizeof(sockaddr_in)};
   } else {
-    auto res = sockaddr();
-    auto v6 = (sockaddr_in6 *)&res;
-    v6->sin6_family = AF_INET6;
+    auto res = new sockaddr_in6();
+    res->sin6_family = AF_INET6;
     std::array<unsigned char, 16> arr;
     std::copy(addr["v6_addr"_f].value().begin(),
               addr["v6_addr"_f].value().end(), arr.rbegin());
-    v6->sin6_addr = std::bit_cast<IN6_ADDR>(arr);
-    v6->sin6_port = htons(addr["port"_f].value());
-    return res;
+    res->sin6_addr = *(IN6_ADDR *)&arr;
+    res->sin6_port = htons(addr["port"_f].value());
+    return {std::unique_ptr<sockaddr>{(sockaddr *)res}, sizeof(sockaddr_in6)};
   }
 
-  return std::nullopt;
+  return {nullptr, 0};
 }
 
 bool is_localhost(const sockaddr *name) {
