@@ -2,7 +2,7 @@
 
 a socks5 proxy injection tool for Windows, making all programs proxy-able
 
-## dependences
+## development dependences
 
 environments:
 - C++ compiler (with C++20 support)
