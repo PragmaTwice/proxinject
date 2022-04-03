@@ -1,3 +1,6 @@
+#ifndef PROXINJECT_COMMON_QUEUE
+#define PROXINJECT_COMMON_QUEUE
+
 #include <queue>
 #include <condition_variable>
 #include <mutex>
@@ -42,3 +45,5 @@ public:
     return true;
   }
 };
+
+#endif

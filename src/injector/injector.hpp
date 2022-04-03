@@ -1,3 +1,6 @@
+#ifndef PROXINJECT_INJECTOR_INJECTOR
+#define PROXINJECT_INJECTOR_INJECTOR
+
 #include "winraii.hpp"
 #include <filesystem>
 
@@ -51,3 +54,5 @@ struct injector {
     return false;
   }
 };
+
+#endif

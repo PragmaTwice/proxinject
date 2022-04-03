@@ -1,3 +1,6 @@
+#ifndef PROXINJECT_COMMON_MINHOOK
+#define PROXINJECT_COMMON_MINHOOK
+
 #include <minhook.h>
 
 struct minhook {
@@ -52,3 +55,5 @@ struct minhook {
     static status remove() { return minhook::remove(syscall); }
   };
 };
+
+#endif

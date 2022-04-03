@@ -1,3 +1,6 @@
+#ifndef PROXINJECT_COMMON_SCHEMA
+#define PROXINJECT_COMMON_SCHEMA
+
 #include <protopuf/message.h>
 
 using pp::operator""_f;
@@ -17,8 +20,18 @@ std::pair<ip::address, std::uint16_t> to_asio(const IpAddr &ip) {
   }
 }
 
+IpAddr from_asio(const ip::address &addr, std::uint16_t port) {
+  if (addr.is_v4()) {
+    return IpAddr{addr.to_v4().to_uint(), {}, port};
+  } else {
+    auto v = addr.to_v6().to_bytes();
+    return IpAddr{{}, std::vector<unsigned char>{v.begin(), v.end()}, port};
+  }
+}
+
 using InjecteeConnect = pp::message<pp::uint32_field<"handle", 1>,
-                                    pp::message_field<"addr", 2, IpAddr>>;
+                                    pp::message_field<"addr", 2, IpAddr>,
+                                    pp::message_field<"proxy", 3, IpAddr>>;
 
 using InjecteeMessage =
     pp::message<pp::string_field<"opcode", 1>,
@@ -49,3 +62,5 @@ M::template get_type_by_name<S>::base_type compare_message(const M &msg) {
 
   return std::nullopt;
 }
+
+#endif

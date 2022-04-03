@@ -1,3 +1,6 @@
+#ifndef PROXINJECT_COMMON_WINRAII
+#define PROXINJECT_COMMON_WINRAII
+
 #include <Windows.h>
 #include <memory>
 #include <optional>
@@ -82,3 +85,5 @@ std::wstring get_current_filename() {
 
   return path;
 }
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef PROXINJECT_COMMON_ASYNC_IO
+#define PROXINJECT_COMMON_ASYNC_IO
+
 #include <asio.hpp>
 #include <protopuf/message.h>
 #include <span>
@@ -35,3 +38,5 @@ asio::awaitable<void> async_write_message(Stream &s, const Message &msg) {
 }
 
 static inline auto proxinject_endpoint = tcp::endpoint(ip::address::from_string("127.0.0.1"), 33321);
+
+#endif

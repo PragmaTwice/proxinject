@@ -46,6 +46,20 @@ int main(int argc, char *argv[]) {
       for (const auto &[pid, _] : server.clients) {
         std::cout << pid << std::endl;
       }
+    } else if (opcode == "set-config") {
+      std::string addr;
+      std::uint16_t port;
+      std::cin >> addr >> port;
+      server.config(ip::address::from_string(addr), port);
+    } else if (opcode == "clear-config") {
+      server.clear_config();
+    } else if (opcode == "get-config") {
+      if (auto v = server.get_config()) {
+        auto [addr, port] = to_asio((*v)["addr"_f].value());
+        std::cout << addr << ":" << port << std::endl;
+      } else {
+        std::cout << "empty" << std::endl;
+      }
     } else {
       std::cout << "unknown command" << std::endl;
     }
