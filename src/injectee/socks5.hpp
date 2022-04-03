@@ -14,7 +14,6 @@ constexpr const char SOCKS_GENERAL_FAILURE = 4;
 
 constexpr const size_t SOCKS_REQUEST_MAX_SIZE = 134;
 
-
 bool socks5_handshake(SOCKET s) {
   const char req[] = {SOCKS_VERSION, 1, SOCKS_NO_AUTHENTICATION};
   if (send(s, req, sizeof(req), 0) != sizeof(req))
@@ -33,12 +32,21 @@ char socks5_request(SOCKET s, const sockaddr *addr) {
   char *ptr = buf + 3;
   if (addr->sa_family == AF_INET) {
     auto v4 = (const sockaddr_in *)addr;
-    *(ptr++) = SOCKS_IPV4;
-    *(((ULONG *&)ptr)++) = v4->sin_addr.s_addr;
-    *(((USHORT *&)ptr)++) = v4->sin_port;
-    if (send(s, buf, ptr - buf, 0) != ptr - buf)
-      return SOCKS_GENERAL_FAILURE;
+    *ptr++ = SOCKS_IPV4;
+    *((ULONG *&)ptr)++ = v4->sin_addr.s_addr;
+    *((USHORT *&)ptr)++ = v4->sin_port;
+  } else if (addr->sa_family == AF_INET6) {
+    auto v6 = (const sockaddr_in6 *)addr;
+    *ptr++ = SOCKS_IPV6;
+    ptr = std::copy((const char *)&v6->sin6_addr,
+                    (const char *)(&v6->sin6_addr + 1), ptr);
+    *((USHORT *&)ptr)++ = v6->sin6_port;
+  } else {
+    return SOCKS_GENERAL_FAILURE;
   }
+
+  if (send(s, buf, ptr - buf, 0) != ptr - buf)
+    return SOCKS_GENERAL_FAILURE;
 
   if (recv(s, buf, 4, 0) == SOCKET_ERROR)
     return SOCKS_GENERAL_FAILURE;
@@ -49,6 +57,11 @@ char socks5_request(SOCKET s, const sockaddr *addr) {
   if (buf[3] == SOCKS_IPV4) {
     if (recv(s, buf + 4, 6, MSG_WAITALL) == SOCKET_ERROR)
       return SOCKS_GENERAL_FAILURE;
+  } else if (buf[3] == SOCKS_IPV6) {
+    if (recv(s, buf + 4, 18, MSG_WAITALL) == SOCKET_ERROR)
+      return SOCKS_GENERAL_FAILURE;
+  } else {
+    return SOCKS_GENERAL_FAILURE;
   }
 
   return SOCKS_SUCCESS;
