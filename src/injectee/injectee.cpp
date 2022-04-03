@@ -3,6 +3,7 @@
 #include "winnet.hpp"
 #include <iostream>
 #include <string>
+#include "socks5.hpp"
 
 blocking_queue<InjecteeMessage> queue;
 injectee_config config;
@@ -12,8 +13,23 @@ struct hook_connect : minhook::api<connect, hook_connect> {
     if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) &&
         !is_localhost(name)) {
       if (auto v = to_ip_addr(name)) {
+        auto proxy = config.get_addr();
         queue.push(create_message<InjecteeMessage, "connect">(
-            InjecteeConnect{(std::uint32_t)s, *v, config.get_addr()}));
+            InjecteeConnect{(std::uint32_t)s, *v, proxy}));
+        if (proxy) {
+          if (auto addr = to_sockaddr(*proxy)) {
+            auto ret = original(s, &*addr, sizeof(sockaddr));
+            if (ret)
+              return ret;
+
+            if (!socks5_handshake(s))
+              return SOCKET_ERROR;
+            if (socks5_request(s, name) != SOCKS_SUCCESS)
+              return SOCKET_ERROR;
+            
+            return 0;
+          }
+        }
       }
     }
     return original(s, name, namelen);

@@ -22,25 +22,27 @@ std::optional<IpAddr> to_ip_addr(const sockaddr *name) {
   return std::nullopt;
 }
 
-std::unique_ptr<sockaddr> to_sockaddr(const IpAddr &addr) {
-  auto res = std::make_unique<sockaddr>();
-
+std::optional<sockaddr> to_sockaddr(const IpAddr &addr) {
   if (auto v = addr["v4_addr"_f]) {
-    auto v4 = (sockaddr_in *)res.get();
+    auto res = sockaddr();
+    auto v4 = (sockaddr_in *)&res;
     v4->sin_family = AF_INET;
     v4->sin_addr.s_addr = htonl(v.value());
     v4->sin_port = htons(addr["port"_f].value());
+    return res;
   } else {
-    auto v6 = (sockaddr_in6 *)res.get();
+    auto res = sockaddr();
+    auto v6 = (sockaddr_in6 *)&res;
     v6->sin6_family = AF_INET6;
     std::array<unsigned char, 16> arr;
     std::copy(addr["v6_addr"_f].value().begin(),
               addr["v6_addr"_f].value().end(), arr.rbegin());
     v6->sin6_addr = std::bit_cast<IN6_ADDR>(arr);
     v6->sin6_port = htons(addr["port"_f].value());
+    return res;
   }
 
-  return res;
+  return std::nullopt;
 }
 
 bool is_localhost(const sockaddr *name) {

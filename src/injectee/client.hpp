@@ -16,15 +16,6 @@ struct injectee_config {
     cfg = config;
   }
 
-  std::unique_ptr<sockaddr> get_win_addr() {
-    std::lock_guard guard(mtx);
-    if (cfg) {
-      return to_sockaddr((*cfg)["addr"_f].value());
-    }
-
-    return nullptr;
-  }
-
   std::optional<IpAddr> get_addr() {
     if (cfg) {
       return cfg.value()["addr"_f];
