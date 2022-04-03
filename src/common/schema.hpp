@@ -53,7 +53,7 @@ using InjecteeMessage =
                 pp::message_field<"connect", 2, InjecteeConnect>,
                 pp::uint32_field<"pid", 3>>;
 
-using InjectorConfig = pp::message<pp::message_field<"addr", 1, IpAddr>>;
+using InjectorConfig = pp::message<pp::message_field<"addr", 1, IpAddr>, pp::bool_field<"log", 2>>;
 
 using InjectorMessage =
     pp::message<pp::string_field<"opcode", 1>,

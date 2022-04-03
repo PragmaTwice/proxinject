@@ -29,7 +29,6 @@ struct injectee_client {
 
   virtual void stop() = 0;
   virtual asio::awaitable<void> config(const InjectorConfig &) = 0;
-  virtual asio::awaitable<void> clear_config() = 0;
   virtual asio::any_io_executor get_context() = 0;
 };
 
@@ -37,34 +36,49 @@ using injectee_client_ptr = std::shared_ptr<injectee_client>;
 
 struct injector_server {
   std::map<DWORD, injectee_client_ptr> clients;
-  std::optional<InjectorConfig> config_;
+  InjectorConfig config_;
   std::mutex config_mutex;
 
   void open(DWORD pid, injectee_client_ptr ptr) { clients.emplace(pid, ptr); }
 
-  void config(const ip::address &addr, std::uint32_t port) {
-    std::lock_guard guard(config_mutex);
-    config_ = InjectorConfig{from_asio(addr, port)};
-
+  void broadcast_config() {
     for (const auto &[_, client] : clients) {
       asio::co_spawn(
           client->get_context(),
-          [cfg = *config_, client] { return client->config(cfg); },
+          [cfg = config_, client] { return client->config(cfg); },
           asio::detached);
     }
   }
-
-  void clear_config() {
+    
+  template <typename T>
+  void config_proxy(T&& v) {
     std::lock_guard guard(config_mutex);
-    config_ = std::nullopt;
-    for (const auto &[_, client] : clients) {
-      asio::co_spawn(
-          client->get_context(), [client] { return client->clear_config(); },
-          asio::detached);
-    }
+    config_["addr"_f] = std::forward<T>(v);
+
+    broadcast_config();
   }
 
-  std::optional<InjectorConfig> get_config() {
+  void set_proxy(const ip::address &addr, std::uint32_t port) {
+    config_proxy(from_asio(addr, port));
+  }
+
+  void clear_proxy() { config_proxy(std::nullopt); }
+
+  void enable_log() {
+    std::lock_guard guard(config_mutex);
+    config_["log"_f] = true;
+
+    broadcast_config();
+  }
+
+  void disable_log() {
+    std::lock_guard guard(config_mutex);
+    config_["log"_f] = false;
+
+    broadcast_config();
+  }
+
+  InjectorConfig get_config() {
     std::lock_guard guard(config_mutex);
     return config_;
   }
@@ -114,11 +128,6 @@ struct injectee_session : injectee_client,
         socket_, create_message<InjectorMessage, "config">(cfg));
   }
 
-  asio::awaitable<void> clear_config() {
-    co_await async_write_message(
-        socket_, create_message<InjectorMessage, "config">(std::nullopt));
-  }
-
   asio::awaitable<void> reader() {
     try {
       while (true) {
@@ -139,9 +148,7 @@ struct injectee_session : injectee_client,
     if (auto v = compare_message<"pid">(msg)) {
       pid_ = *v;
       server_.open(pid_, shared_from_this());
-      if (auto v = server_.get_config()) {
-        co_await config(*v);
-      }
+      co_await config(server_.get_config());
     } else if (auto v = compare_message<"connect">(msg)) {
       auto [addr, port] = to_asio((*v)["addr"_f].value());
       std::cout << pid_ << ": " << (*v)["handle"_f].value() << ", " << addr

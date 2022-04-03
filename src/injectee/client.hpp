@@ -23,20 +23,18 @@
 #include <iostream>
 
 struct injectee_config {
-  std::optional<InjectorConfig> cfg;
+  InjectorConfig cfg;
   std::mutex mtx;
 
-  void set(const std::optional<InjectorConfig> &config) {
+  void set(const InjectorConfig &config) {
     std::lock_guard guard(mtx);
     cfg = config;
   }
 
-  std::optional<IpAddr> get_addr() {
-    if (cfg) {
-      return cfg.value()["addr"_f];
-    }
+  InjectorConfig get() {
+    std::lock_guard guard(mtx);
 
-    return std::nullopt;
+    return cfg;
   }
 };
 
@@ -91,8 +89,8 @@ struct injectee_client : std::enable_shared_from_this<injectee_client> {
   }
 
   asio::awaitable<void> process(const InjectorMessage &msg) {
-    if (msg["opcode"_f] == "config") {
-      config_.set(msg["config"_f]);
+    if (auto v = compare_message<"config">(msg)) {
+      config_.set(*v);
     }
 
     co_return;

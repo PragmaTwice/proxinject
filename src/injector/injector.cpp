@@ -66,32 +66,38 @@ int main(int argc, char *argv[]) {
       for (const auto &[pid, _] : server.clients) {
         std::cout << pid << std::endl;
       }
-    } else if (opcode == "set-config") {
+    } else if (opcode == "set-proxy") {
       std::string addr;
       std::uint16_t port;
       std::cin >> addr >> port;
-      server.config(ip::address::from_string(addr), port);
-    } else if (opcode == "clear-config") {
-      server.clear_config();
-    } else if (opcode == "get-config") {
-      if (auto v = server.get_config()) {
-        auto [addr, port] = to_asio((*v)["addr"_f].value());
+      server.set_proxy(ip::address::from_string(addr), port);
+    } else if (opcode == "clear-proxy") {
+      server.clear_proxy();
+    } else if (opcode == "get-proxy") {
+      if (auto v = server.get_config()["addr"_f]) {
+        auto [addr, port] = to_asio(*v);
         std::cout << addr << ":" << port << std::endl;
       } else {
         std::cout << "empty" << std::endl;
       }
+    } else if (opcode == "enable-log") {
+      server.enable_log();
+    } else if (opcode == "disable-log") {
+      server.disable_log();
     } else if (opcode == "help") {
       std::cout
           << "commands:" << std::endl
           << "`load <pid>`: inject to a process" << std::endl
           << "`unload <pid>`: restore an injected process" << std::endl
           << "`list`: list all injected process ids" << std::endl
-          << "`set-config <address> <port>`: set proxy config for all injected "
+          << "`set-proxy <address> <port>`: set proxy config for all injected "
              "processes"
           << std::endl
-          << "`clear-config`: remove proxy config for all injected processes"
+          << "`clear-proxy`: remove proxy config for all injected processes"
           << std::endl
-          << "`get-config`: dump current proxy config" << std::endl
+          << "`get-proxy`: dump current proxy config" << std::endl
+          << "`enable-log`: enable logging for process connection" << std::endl
+          << "`disable-log`: disable logging for process connection" << std::endl
           << "`help`: show help messages" << std::endl
           << "`exit`: quit the program" << std::endl;
     } else {

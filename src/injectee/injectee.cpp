@@ -28,9 +28,15 @@ struct hook_connect : minhook::api<connect, hook_connect> {
     if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) &&
         !is_localhost(name) && queue) {
       if (auto v = to_ip_addr(name)) {
-        auto proxy = config.get_addr();
-        queue->push(create_message<InjecteeMessage, "connect">(
-            InjecteeConnect{(std::uint32_t)s, *v, proxy}));
+        auto cfg = config.get();
+
+        auto proxy = cfg["addr"_f];
+        auto log = cfg["log"_f];
+        if (log && log.value()) {
+          queue->push(create_message<InjecteeMessage, "connect">(
+              InjecteeConnect{(std::uint32_t)s, *v, proxy}));
+        }
+
         if (proxy) {
           if (auto [addr, addr_size] = to_sockaddr(*proxy); addr) {
             auto ret = original(s, &*addr, addr_size);
