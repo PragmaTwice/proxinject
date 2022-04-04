@@ -2,12 +2,15 @@ name: CMake
 
 on:
   push:
+    branches: [ master ]
   pull_request:
     branches: [ master ]
   workflow_dispatch:
 
-env:
-  BUILD_TYPE: Release
+strategy:
+  matrix:
+    env:
+      BUILD_TYPE: [ Debug, Release ]
 
 jobs:
   build:
@@ -27,7 +30,7 @@ jobs:
       with:
         name: build
         path: |
-          ${{github.workspace}}/build/*.exe
-          ${{github.workspace}}/build/*.dll
-          ${{github.workspace}}/build/*.pdb
+          ${{github.workspace}}\build\*.exe
+          ${{github.workspace}}\build\*.dll
+          ${{github.workspace}}\build\*.pdb
         retention-days: 7
