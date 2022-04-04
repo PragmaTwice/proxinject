@@ -29,7 +29,5 @@ jobs:
       with:
         name: build
         path: |
-          ${{github.workspace}}\build\*.exe
-          ${{github.workspace}}\build\*.dll
-          ${{github.workspace}}\build\*.pdb
+          ${{github.workspace}}\build\${{ matrix.build_type }}
         retention-days: 7
