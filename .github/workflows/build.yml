@@ -26,5 +26,8 @@ jobs:
       uses: actions/upload-artifact@v3.0.0
       with:
         name: build
-        path: ${{github.workspace}}/build
+        path: |
+          ${{github.workspace}}/build/*.exe
+          ${{github.workspace}}/build/*.dll
+          ${{github.workspace}}/build/*.pdb
         retention-days: 7
