@@ -61,6 +61,20 @@ int main(int argc, char *argv[]) {
       for (const auto &[pid, _] : server.clients) {
         std::cout << pid << std::endl;
       }
+    } else if (opcode == "add") {
+      std::string s;
+      std::cin >> s;
+      injector::pid_by_name(s.c_str(), [](DWORD pid) {
+        std::cout << pid << ": " << (server.inject(pid) ? "success" : "failed")
+                  << std::endl;
+      });
+    } else if (opcode == "remove") {
+      std::string s;
+      std::cin >> s;
+      injector::pid_by_name(s.c_str(), [](DWORD pid) {
+        std::cout << pid << ": " << (server.close(pid) ? "success" : "failed")
+                  << std::endl;
+      });
     } else if (opcode == "set-proxy") {
       std::string addr;
       std::uint16_t port;
@@ -84,6 +98,12 @@ int main(int argc, char *argv[]) {
           << "commands:" << std::endl
           << "`load <pid>`: inject to a process" << std::endl
           << "`unload <pid>`: restore an injected process" << std::endl
+          << "`add <process-name>`: inject all processes named <process-name> "
+             "(no `.exe` suffix)"
+          << std::endl
+          << "`remove <process-name>`: restore all processes named "
+             "<process-name> (no `.exe` suffix)"
+          << std::endl
           << "`list`: list all injected process ids" << std::endl
           << "`set-proxy <address> <port>`: set proxy config for all injected "
              "processes"

@@ -68,6 +68,15 @@ struct injector {
 
     return false;
   }
+
+  template <typename F>
+  static void pid_by_name(std::string_view name, F&& f) {
+    match_process([name, &f](std::string_view file, DWORD pid) {
+      if (file.ends_with(".exe") && (file.remove_suffix(4), file == name)) {
+        std::forward<F>(f)(pid);
+      }
+    });
+  }
 };
 
 #endif

@@ -19,6 +19,7 @@
 #include <Windows.h>
 #include <memory>
 #include <optional>
+#include "tlhelp32.h"
 
 template <auto f> struct static_function {
   template <typename T> decltype(auto) operator()(T &&x) const {
@@ -107,5 +108,18 @@ template <typename T> struct scope_ptr_bind {
   scope_ptr_bind(T *&ptr, T *bind) : ptr(ptr) { ptr = bind; }
   ~scope_ptr_bind() { ptr = nullptr; }
 };
+
+template <typename F> void match_process(F &&f) {
+  PROCESSENTRY32 entry;
+  entry.dwSize = sizeof(PROCESSENTRY32);
+
+  handle snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+
+  if (Process32First(snapshot.get(), &entry) == TRUE) {
+    while (Process32Next(snapshot.get(), &entry) == TRUE) {
+      std::forward<F>(f)(entry.szExeFile, entry.th32ProcessID);
+    }
+  }
+}
 
 #endif
