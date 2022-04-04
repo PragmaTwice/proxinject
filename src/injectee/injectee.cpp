@@ -20,15 +20,15 @@
 #include <iostream>
 #include <string>
 
-std::unique_ptr<blocking_queue<InjecteeMessage>> queue = nullptr;
-injectee_config config;
+blocking_queue<InjecteeMessage> *queue = nullptr;
+injectee_config *config = nullptr;
 
 struct hook_connect : minhook::api<connect, hook_connect> {
   static int detour(SOCKET s, const sockaddr *name, int namelen) {
     if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) &&
-        !is_localhost(name) && queue) {
+        !is_localhost(name) && queue && config) {
       if (auto v = to_ip_addr(name)) {
-        auto cfg = config.get();
+        auto cfg = config->get();
 
         auto proxy = cfg["addr"_f];
         auto log = cfg["log"_f];
@@ -58,14 +58,21 @@ struct hook_connect : minhook::api<connect, hook_connect> {
 };
 
 void do_client(HINSTANCE dll_handle) {
-  asio::io_context io_context(1);
+  {
+    asio::io_context io_context(1);
 
-  queue = std::make_unique<blocking_queue<InjecteeMessage>>(io_context, 1024);
+    auto qu =
+        std::make_unique<blocking_queue<InjecteeMessage>>(io_context, 1024);
+    auto cfg = std::make_unique<injectee_config>();
 
-  injectee_client c(io_context, proxinject_endpoint, *queue, config);
-  asio::co_spawn(io_context, c.start(), asio::detached);
+    scope_ptr_bind queue_bind(queue, qu.get());
+    scope_ptr_bind config_bind(config, cfg.get());
 
-  io_context.run();
+    injectee_client c(io_context, proxinject_endpoint, *queue, *config);
+    asio::co_spawn(io_context, c.start(), asio::detached);
+
+    io_context.run();
+  }
   FreeLibrary(dll_handle);
 }
 

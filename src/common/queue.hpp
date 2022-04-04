@@ -45,6 +45,10 @@ public:
     _qu.pop();
     co_return item;
   }
+
+  void cancel() { chan.cancel(); }
+
+  ~blocking_queue() { chan.close(); }
 };
 
 #endif

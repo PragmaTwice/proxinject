@@ -33,8 +33,12 @@ struct injectee_config {
 
   InjectorConfig get() {
     std::lock_guard guard(mtx);
-
     return cfg;
+  }
+
+  void clear() {
+    std::lock_guard guard(mtx);
+    cfg = InjectorConfig{};
   }
 };
 
@@ -97,6 +101,8 @@ struct injectee_client : std::enable_shared_from_this<injectee_client> {
   }
 
   void stop() {
+    queue_.cancel();
+    config_.clear();
     socket_.close();
     timer_.cancel();
   }

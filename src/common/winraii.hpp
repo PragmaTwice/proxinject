@@ -101,4 +101,11 @@ std::wstring get_current_filename() {
   return path;
 }
 
+template <typename T> struct scope_ptr_bind {
+  T *&ptr;
+
+  scope_ptr_bind(T *&ptr, T *bind) : ptr(ptr) { ptr = bind; }
+  ~scope_ptr_bind() { ptr = nullptr; }
+};
+
 #endif
