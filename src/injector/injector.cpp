@@ -52,12 +52,7 @@ int main(int argc, char *argv[]) {
     } else if (opcode == "load") {
       DWORD pid;
       std::cin >> pid;
-      if (server.clients.contains(pid)) {
-        std::cout << "already loaded" << std::endl;
-      } else {
-        std::cout << (injector::inject(pid) ? "success" : "failed")
-                  << std::endl;
-      }
+      std::cout << (server.inject(pid) ? "success" : "failed") << std::endl;
     } else if (opcode == "unload") {
       DWORD pid;
       std::cin >> pid;
@@ -97,7 +92,8 @@ int main(int argc, char *argv[]) {
           << std::endl
           << "`get-proxy`: dump current proxy config" << std::endl
           << "`enable-log`: enable logging for process connection" << std::endl
-          << "`disable-log`: disable logging for process connection" << std::endl
+          << "`disable-log`: disable logging for process connection"
+          << std::endl
           << "`help`: show help messages" << std::endl
           << "`exit`: quit the program" << std::endl;
     } else {

@@ -23,23 +23,26 @@
 blocking_queue<InjecteeMessage> *queue = nullptr;
 injectee_config *config = nullptr;
 
-struct hook_connect : minhook::api<connect, hook_connect> {
-  static int detour(SOCKET s, const sockaddr *name, int namelen) {
-    if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) &&
-        !is_localhost(name) && queue && config) {
+template <auto F> struct hook_connect_fn : minhook::api<F, hook_connect_fn<F>> {
+  using base = minhook::api<F, hook_connect_fn<F>>;
+
+  template <typename... T>
+  static int detour(SOCKET s, const sockaddr *name, int namelen, T... args) {
+    if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) && config &&
+        !is_localhost(name)) {
+      auto cfg = config->get();
       if (auto v = to_ip_addr(name)) {
-        auto cfg = config->get();
 
         auto proxy = cfg["addr"_f];
         auto log = cfg["log"_f];
-        if (log && log.value()) {
+        if (queue && log && log.value()) {
           queue->push(create_message<InjecteeMessage, "connect">(
               InjecteeConnect{(std::uint32_t)s, *v, proxy}));
         }
 
         if (proxy) {
           if (auto [addr, addr_size] = to_sockaddr(*proxy); addr) {
-            auto ret = original(s, &*addr, addr_size);
+            auto ret = base::original(s, &*addr, addr_size, args...);
             if (ret)
               return ret;
 
@@ -53,7 +56,21 @@ struct hook_connect : minhook::api<connect, hook_connect> {
         }
       }
     }
-    return original(s, name, namelen);
+    return base::original(s, name, namelen, args...);
+  }
+};
+
+struct hook_connect : hook_connect_fn<connect> {};
+struct hook_WSAConnect : hook_connect_fn<WSAConnect> {};
+
+struct hook_WSAConnectByList
+    : minhook::api<WSAConnectByList, hook_WSAConnectByList> {
+  static BOOL detour(SOCKET s, PSOCKET_ADDRESS_LIST SocketAddress,
+                     LPDWORD LocalAddressLength, LPSOCKADDR LocalAddress,
+                     LPDWORD RemoteAddressLength, LPSOCKADDR RemoteAddress,
+                     const timeval *timeout, LPWSAOVERLAPPED Reserved) {
+    return original(s, SocketAddress, LocalAddressLength, LocalAddress,
+                    RemoteAddressLength, RemoteAddress, timeout, Reserved);
   }
 };
 
@@ -82,6 +99,8 @@ BOOL WINAPI DllMain(HINSTANCE dll_handle, DWORD reason, LPVOID reserved) {
     DisableThreadLibraryCalls(dll_handle);
     minhook::init();
     hook_connect::create();
+    hook_WSAConnect::create();
+    hook_WSAConnectByList::create();
     minhook::enable();
     std::thread(do_client, dll_handle).detach();
     break;

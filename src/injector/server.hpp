@@ -39,7 +39,17 @@ struct injector_server {
   InjectorConfig config_;
   std::mutex config_mutex;
 
-  void open(DWORD pid, injectee_client_ptr ptr) { clients.emplace(pid, ptr); }
+  bool inject(DWORD pid) {
+    if (clients.contains(pid)) {
+      return false;
+    } else {
+      return injector::inject(pid);
+    }
+  }
+
+  bool open(DWORD pid, injectee_client_ptr ptr) {
+    return clients.emplace(pid, ptr).second;
+  }
 
   void broadcast_config() {
     for (const auto &[_, client] : clients) {
@@ -49,9 +59,8 @@ struct injector_server {
           asio::detached);
     }
   }
-    
-  template <typename T>
-  void config_proxy(T&& v) {
+
+  template <typename T> void config_proxy(T &&v) {
     std::lock_guard guard(config_mutex);
     config_["addr"_f] = std::forward<T>(v);
 
