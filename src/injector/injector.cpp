@@ -111,8 +111,8 @@ int main(int argc, char *argv[]) {
           << "`clear-proxy`: remove proxy config for all injected processes"
           << std::endl
           << "`get-proxy`: dump current proxy config" << std::endl
-          << "`enable-log`: enable logging for process connection" << std::endl
-          << "`disable-log`: disable logging for process connection"
+          << "`enable-log`: enable logging for network connections" << std::endl
+          << "`disable-log`: disable logging for network connections"
           << std::endl
           << "`help`: show help messages" << std::endl
           << "`exit`: quit the program" << std::endl;
