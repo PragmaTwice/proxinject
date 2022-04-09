@@ -74,4 +74,27 @@ bool is_localhost(const sockaddr *name) {
   return false;
 }
 
+bool sockequal(const sockaddr *l, const sockaddr *r) {
+  if (l->sa_family == r->sa_family) {
+    if (l->sa_family == AF_INET) {
+      auto l4 = (const sockaddr_in *)l;
+      auto r4 = (const sockaddr_in *)r;
+
+      return l4->sin_addr.S_un.S_addr == r4->sin_addr.S_un.S_addr &&
+             l4->sin_port == r4->sin_port;
+    } else if (l->sa_family == AF_INET6) {
+      auto l6 = (const sockaddr_in6 *)l;
+      auto r6 = (const sockaddr_in6 *)r;
+
+      return l6->sin6_port == r6->sin6_port &&
+             std::equal(l6->sin6_addr.u.Byte, l6->sin6_addr.u.Byte + 16,
+                        r6->sin6_addr.u.Byte);
+    }
+
+    return false; // FIXME: add equal checking for more family
+  }
+
+  return false;
+}
+
 #endif

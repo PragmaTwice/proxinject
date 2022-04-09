@@ -13,66 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "client.hpp"
-#include "minhook.hpp"
-#include "socks5.hpp"
-#include "winnet.hpp"
-#include <iostream>
-#include <string>
-
-blocking_queue<InjecteeMessage> *queue = nullptr;
-injectee_config *config = nullptr;
-
-template <auto F> struct hook_connect_fn : minhook::api<F, hook_connect_fn<F>> {
-  using base = minhook::api<F, hook_connect_fn<F>>;
-
-  template <typename... T>
-  static int detour(SOCKET s, const sockaddr *name, int namelen, T... args) {
-    if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) && config &&
-        !is_localhost(name)) {
-      auto cfg = config->get();
-      if (auto v = to_ip_addr(name)) {
-
-        auto proxy = cfg["addr"_f];
-        auto log = cfg["log"_f];
-        if (queue && log && log.value()) {
-          queue->push(create_message<InjecteeMessage, "connect">(
-              InjecteeConnect{(std::uint32_t)s, *v, proxy}));
-        }
-
-        if (proxy) {
-          if (auto [addr, addr_size] = to_sockaddr(*proxy); addr) {
-            auto ret = base::original(s, &*addr, addr_size, args...);
-            if (ret)
-              return ret;
-
-            if (!socks5_handshake(s))
-              return SOCKET_ERROR;
-            if (socks5_request(s, name) != SOCKS_SUCCESS)
-              return SOCKET_ERROR;
-
-            return 0;
-          }
-        }
-      }
-    }
-    return base::original(s, name, namelen, args...);
-  }
-};
-
-struct hook_connect : hook_connect_fn<connect> {};
-struct hook_WSAConnect : hook_connect_fn<WSAConnect> {};
-
-struct hook_WSAConnectByList
-    : minhook::api<WSAConnectByList, hook_WSAConnectByList> {
-  static BOOL detour(SOCKET s, PSOCKET_ADDRESS_LIST SocketAddress,
-                     LPDWORD LocalAddressLength, LPSOCKADDR LocalAddress,
-                     LPDWORD RemoteAddressLength, LPSOCKADDR RemoteAddress,
-                     const timeval *timeout, LPWSAOVERLAPPED Reserved) {
-    return original(s, SocketAddress, LocalAddressLength, LocalAddress,
-                    RemoteAddressLength, RemoteAddress, timeout, Reserved);
-  }
-};
+#include "hook.hpp"
 
 void do_client(HINSTANCE dll_handle) {
   {
@@ -98,9 +39,11 @@ BOOL WINAPI DllMain(HINSTANCE dll_handle, DWORD reason, LPVOID reserved) {
   case DLL_PROCESS_ATTACH:
     DisableThreadLibraryCalls(dll_handle);
     minhook::init();
+
     hook_connect::create();
     hook_WSAConnect::create();
     hook_WSAConnectByList::create();
+
     minhook::enable();
     std::thread(do_client, dll_handle).detach();
     break;

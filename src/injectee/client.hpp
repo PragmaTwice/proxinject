@@ -20,7 +20,6 @@
 #include "queue.hpp"
 #include "schema.hpp"
 #include "winnet.hpp"
-#include <iostream>
 
 struct injectee_config {
   InjectorConfig cfg;

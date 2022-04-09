@@ -17,7 +17,6 @@
 #define PROXINJECT_COMMON_ASYNC_IO
 
 #include <asio.hpp>
-#include <iostream>
 #include <protopuf/message.h>
 #include <span>
 
