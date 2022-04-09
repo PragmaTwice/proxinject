@@ -19,7 +19,6 @@
 #include "async_io.hpp"
 #include "schema.hpp"
 #include <asio.hpp>
-#include <iostream>
 #include <map>
 
 using tcp = asio::ip::tcp;
@@ -153,23 +152,20 @@ struct injectee_session : injectee_client,
     }
   }
 
+  virtual asio::awaitable<void> process_pid(DWORD pid) { co_return; }
+  virtual asio::awaitable<void> process_connect(const InjecteeConnect &msg) {
+    co_return;
+  }
+
   asio::awaitable<void> process(const InjecteeMessage &msg) {
     if (auto v = compare_message<"pid">(msg)) {
       pid_ = *v;
-      server_.open(pid_, shared_from_this());
+      server_.open(*v, shared_from_this());
       co_await config(server_.get_config());
+      co_await process_pid(*v);
     } else if (auto v = compare_message<"connect">(msg)) {
-      auto [addr, port] = to_asio((*v)["addr"_f].value());
-      std::cout << pid_ << ": " << (*v)["handle"_f].value() << ", " << addr
-                << ":" << port;
-      if (auto proxy = (*v)["proxy"_f]) {
-        auto [addr, port] = to_asio(*proxy);
-        std::cout << " via " << addr << ":" << port;
-      }
-      std::cout << std::endl;
+      co_await process_connect(*v);
     }
-
-    co_return;
   }
 
   void stop() {
@@ -179,10 +175,11 @@ struct injectee_session : injectee_client,
   }
 };
 
+template <typename Session = injectee_session>
 asio::awaitable<void> listener(injector_server &server,
                                tcp::acceptor acceptor) {
   for (;;) {
-    std::make_shared<injectee_session>(
+    std::make_shared<Session>(
         co_await acceptor.async_accept(asio::use_awaitable), server)
         ->start();
   }

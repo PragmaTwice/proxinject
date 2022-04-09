@@ -21,15 +21,31 @@
 #include <iostream>
 #include <string>
 
+struct injectee_session_cli : injectee_session {
+  using injectee_session::injectee_session;
+
+  asio::awaitable<void> process_connect(const InjecteeConnect &msg) override {
+    auto [addr, port] = to_asio(msg["addr"_f].value());
+    std::cout << pid_ << ": " << msg["handle"_f].value() << ", " << addr << ":"
+              << port;
+    if (auto proxy = msg["proxy"_f]) {
+      auto [addr, port] = to_asio(*proxy);
+      std::cout << " via " << addr << ":" << port;
+    }
+    std::cout << std::endl;
+    co_return;
+  }
+};
+
 injector_server server;
 
 void do_server() {
   asio::io_context io_context(1);
 
-  asio::co_spawn(
-      io_context,
-      listener(server, tcp::acceptor(io_context, proxinject_endpoint)),
-      asio::detached);
+  asio::co_spawn(io_context,
+                 listener<injectee_session_cli>(
+                     server, tcp::acceptor(io_context, proxinject_endpoint)),
+                 asio::detached);
 
   asio::signal_set signals(io_context, SIGINT, SIGTERM);
   signals.async_wait([&](auto, auto) { io_context.stop(); });
