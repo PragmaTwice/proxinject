@@ -48,7 +48,7 @@ struct injector {
     return true;
   }
 
-  static inline const char injectee_filename[] = "proxinject_injectee.dll";
+  static inline const char injectee_filename[] = "proxinjectee.dll";
 
   static std::optional<std::wstring>
   find_injectee(std::wstring_view self_binary_path) {
