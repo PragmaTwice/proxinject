@@ -13,5 +13,7 @@ a socks5 proxy injection tool for Windows, making all programs proxy-able
 (you do not need to download/install them manually)
 
 - minhook
-- asio
+- asio (standalone)
 - protopuf
+- cycfi::elements
+
