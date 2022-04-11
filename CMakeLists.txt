@@ -17,6 +17,9 @@ cmake_minimum_required(VERSION 3.20)
 
 project(proxinject)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 include(FetchContent)
 
 FetchContent_Declare(minhook
@@ -44,6 +47,16 @@ if(NOT asio_POPULATED)
   FetchContent_Populate(asio)
 endif()
 
+set(ELEMENTS_ASIO_INCLUDE_DIR ${asio_SOURCE_DIR}/asio/include)
+set(ELEMENTS_BUILD_EXAMPLES OFF)
+FetchContent_Declare(elements
+	GIT_REPOSITORY https://github.com/PragmaTwice/elements
+	GIT_TAG b9e077828dadac1aaa481a89068991be792e81db
+	GIT_SUBMODULES_RECURSE ON
+)
+
+FetchContent_MakeAvailable(elements)
+
 set(ver ${CMAKE_SYSTEM_VERSION})
 string(REPLACE "." "" ver ${ver})
 string(REGEX REPLACE "([0-9])" "0\\1" ver ${ver})
@@ -59,7 +72,13 @@ target_compile_definitions(proxinjectee PUBLIC -D_WIN32_WINNT=${version})
 
 file(GLOB INJECTOR_SRCS src/injector/*.cpp)
 
-add_executable(proxinjector ${INJECTOR_SRCS})
+set(ELEMENTS_APP_PROJECT proxinjector)
+set(ELEMENTS_APP_SOURCES ${INJECTOR_SRCS})
+
+set(ELEMENTS_ROOT ${elements_SOURCE_DIR})
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${ELEMENTS_ROOT}/cmake")
+include(ElementsConfigApp)
+
 target_compile_features(proxinjector PUBLIC cxx_std_20)
 target_link_libraries(proxinjector PUBLIC protopuf)
 target_include_directories(proxinjector PUBLIC ${asio_SOURCE_DIR}/asio/include src/common)

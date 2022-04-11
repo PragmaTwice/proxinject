@@ -152,23 +152,25 @@ struct injectee_session : injectee_client,
     }
   }
 
-  virtual asio::awaitable<void> process_pid(DWORD pid) { co_return; }
+  virtual asio::awaitable<void> process_pid() { co_return; }
   virtual asio::awaitable<void> process_connect(const InjecteeConnect &msg) {
     co_return;
   }
+  virtual void process_close() {}
 
   asio::awaitable<void> process(const InjecteeMessage &msg) {
     if (auto v = compare_message<"pid">(msg)) {
       pid_ = *v;
-      server_.open(*v, shared_from_this());
+      server_.open(pid_, shared_from_this());
       co_await config(server_.get_config());
-      co_await process_pid(*v);
+      co_await process_pid();
     } else if (auto v = compare_message<"connect">(msg)) {
       co_await process_connect(*v);
     }
   }
 
   void stop() {
+    process_close();
     socket_.close();
     timer_.cancel();
     server_.remove(pid_);
@@ -176,11 +178,11 @@ struct injectee_session : injectee_client,
 };
 
 template <typename Session = injectee_session>
-asio::awaitable<void> listener(injector_server &server,
-                               tcp::acceptor acceptor) {
+asio::awaitable<void> listener(tcp::acceptor acceptor, auto &&...args) {
   for (;;) {
     std::make_shared<Session>(
-        co_await acceptor.async_accept(asio::use_awaitable), server)
+        co_await acceptor.async_accept(asio::use_awaitable),
+        std::forward<decltype(args)>(args)...)
         ->start();
   }
 }

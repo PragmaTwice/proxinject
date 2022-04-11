@@ -24,7 +24,7 @@ using IpAddr =
     pp::message<pp::uint32_field<"v4_addr", 1>, pp::bytes_field<"v6_addr", 2>,
                 pp::uint32_field<"port", 3>>;
 
-std::pair<ip::address, std::uint16_t> to_asio(const IpAddr &ip) {
+inline std::pair<ip::address, std::uint16_t> to_asio(const IpAddr &ip) {
   if (const auto &v = ip["v4_addr"_f]) {
     return {ip::address_v4(v.value()), ip["port"_f].value()};
   } else {
@@ -35,13 +35,18 @@ std::pair<ip::address, std::uint16_t> to_asio(const IpAddr &ip) {
   }
 }
 
-IpAddr from_asio(const ip::address &addr, std::uint16_t port) {
+inline IpAddr from_asio(const ip::address &addr, std::uint16_t port) {
   if (addr.is_v4()) {
     return IpAddr{addr.to_v4().to_uint(), {}, port};
   } else {
     auto v = addr.to_v6().to_bytes();
     return IpAddr{{}, std::vector<unsigned char>{v.begin(), v.end()}, port};
   }
+}
+
+inline std::ostream &operator<<(std::ostream &stream, const IpAddr &addr) {
+  auto [address, port] = to_asio(addr);
+  return stream << address << ":" << port;
 }
 
 using InjecteeConnect = pp::message<pp::uint32_field<"handle", 1>,
@@ -53,7 +58,8 @@ using InjecteeMessage =
                 pp::message_field<"connect", 2, InjecteeConnect>,
                 pp::uint32_field<"pid", 3>>;
 
-using InjectorConfig = pp::message<pp::message_field<"addr", 1, IpAddr>, pp::bool_field<"log", 2>>;
+using InjectorConfig =
+    pp::message<pp::message_field<"addr", 1, IpAddr>, pp::bool_field<"log", 2>>;
 
 using InjectorMessage =
     pp::message<pp::string_field<"opcode", 1>,
