@@ -48,6 +48,7 @@ if(NOT asio_POPULATED)
   FetchContent_Populate(asio)
 endif()
 
+message(STATUS ${asio_SOURCE_DIR})
 set(ELEMENTS_ASIO_INCLUDE_DIR ${asio_SOURCE_DIR}/asio/include)
 set(ELEMENTS_BUILD_EXAMPLES OFF)
 FetchContent_Declare(elements
