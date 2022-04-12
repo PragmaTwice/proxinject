@@ -25,7 +25,9 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{ matrix.build_type }}
     
     - name: Move dlls
-      run: mv ${{github.workspace}}\build\*.dll ${{github.workspace}}\build\${{ matrix.build_type }}
+      run: |
+        mv ${{github.workspace}}\build\*.dll ${{github.workspace}}\build\${{ matrix.build_type }}
+        mv ${{github.workspace}}\build\resources ${{github.workspace}}\build\${{ matrix.build_type }}
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.0.0
