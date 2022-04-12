@@ -27,11 +27,10 @@ FetchContent_Declare(minhook
 	GIT_TAG 4a455528f61b5a375b1f9d44e7d296d47f18bb18
 )
 
-set(BUILD_TESTS OFF)
+set(BUILD_TESTS OFF CACHE BOOL "")
 FetchContent_Declare(protopuf
 	GIT_REPOSITORY https://github.com/PragmaTwice/protopuf
 	GIT_TAG 6b795c2cafef4cdf85854158a25356c6055ab635
-	CMAKE_ARGS -DBUILD_TESTS=${BUILD_TESTS}
 )
 
 FetchContent_MakeAvailable(minhook protopuf)
@@ -48,15 +47,12 @@ if(NOT asio_POPULATED)
   FetchContent_Populate(asio)
 endif()
 
-set(ELEMENTS_ASIO_INCLUDE_DIR ${asio_SOURCE_DIR}/asio/include)
-set(ELEMENTS_BUILD_EXAMPLES OFF)
+set(ELEMENTS_ASIO_INCLUDE_DIR ${asio_SOURCE_DIR}/asio/include CACHE STRING "")
+set(ELEMENTS_BUILD_EXAMPLES OFF CACHE BOOL "")
 FetchContent_Declare(elements
 	GIT_REPOSITORY https://github.com/PragmaTwice/elements
 	GIT_TAG b2a4b570a691c7461f7d09ea52a01cf9bb721c81
 	GIT_SUBMODULES_RECURSE ON
-	CMAKE_ARGS 
-		-DELEMENTS_ASIO_INCLUDE_DIR=${ELEMENTS_ASIO_INCLUDE_DIR}
-		-DELEMENTS_BUILD_EXAMPLES=${ELEMENTS_BUILD_EXAMPLES}
 )
 
 FetchContent_MakeAvailable(elements)
