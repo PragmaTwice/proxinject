@@ -19,6 +19,16 @@
 #include "winraii.hpp"
 #include <filesystem>
 
+namespace cycfi::elements {
+// UTF8 conversion utils defined in base_view.cpp
+
+std::string utf8_encode(std::wstring const &wstr);
+
+std::wstring utf8_decode(std::string const &str);
+} // namespace cycfi::elements
+
+namespace ce = cycfi::elements;
+
 namespace fs = std::filesystem;
 
 struct injector {
@@ -70,21 +80,28 @@ struct injector {
   }
 
   template <typename F> static void pid_by_name(std::string_view name, F &&f) {
-    match_process([name, &f](std::string_view file, DWORD pid) {
-      if (file.ends_with(".exe") && (file.remove_suffix(4), file == name)) {
+    match_process([name, &f](std::wstring file, DWORD pid) {
+      std::string file_u8 = ce::utf8_encode(file);
+      if (file_u8.ends_with(".exe") &&
+          file_u8.substr(0, file_u8.size() - 4) == name) {
         std::forward<F>(f)(pid);
       }
     });
   }
 
   static auto get_process_name(DWORD pid) {
-    std::string result;
-    match_process([pid, &result](std::string_view file, DWORD pid_) {
+    std::wstring result;
+    match_process([pid, &result](std::wstring_view file, DWORD pid_) {
       if (pid == pid_) {
         result = file;
       }
     });
-    return result;
+
+    std::string res_u8 = ce::utf8_encode(result);
+    if (res_u8.ends_with(".exe")) {
+      return res_u8.substr(0, res_u8.size() - 4);
+    }
+    return res_u8;
   }
 };
 
