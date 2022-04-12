@@ -23,7 +23,7 @@ namespace fs = std::filesystem;
 
 struct injector {
   static inline const FARPROC load_library =
-      GetProcAddress(GetModuleHandle("kernel32.dll"), "LoadLibraryW");
+      GetProcAddress(GetModuleHandleA("kernel32.dll"), "LoadLibraryW");
 
   static bool inject(DWORD pid, std::wstring_view filename) {
     handle proc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
