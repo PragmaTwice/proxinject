@@ -148,9 +148,21 @@ auto make_controls(injector_server &server, view &view_) {
         return share(align_center(label("unknown")));
       })));
 
+  auto [addr_input, addr_input_ptr] = input_box("ip address");
+  auto [port_input, port_input_ptr] = input_box("port");
+
   auto proxy_toggle = share(toggle_icon_button(icons::power, 1.2, brblue));
-  proxy_toggle->on_click = [&server](bool on) {
-    if (!on) {
+  proxy_toggle->on_click = [&server, proxy_toggle, addr_input_ptr,
+                            port_input_ptr](bool on) {
+    if (on) {
+      auto addr = trim_copy(addr_input_ptr->get_text());
+      auto port = trim_copy(port_input_ptr->get_text());
+      if (all_of_digit(port) && !addr.empty() && !port.empty()) {
+        server.set_proxy(ip::address::from_string(addr), std::stoul(port));
+      } else {
+        proxy_toggle->value(false);
+      }
+    } else {
       server.clear_proxy();
     }
   };
@@ -162,18 +174,6 @@ auto make_controls(injector_server &server, view &view_) {
     } else {
       server.disable_log();
     }
-  };
-
-  auto [addr_input, addr_input_ptr] = input_box("ip address");
-  auto [port_input, port_input_ptr] = input_box("port");
-
-  auto apply_proxy = icon_button(icons::ok, 1.2, bblue);
-  apply_proxy.on_click = [&server, proxy_toggle, addr_input_ptr,
-                          port_input_ptr](bool) {
-    auto addr = trim_copy(addr_input_ptr->get_text());
-    auto port = trim_copy(port_input_ptr->get_text());
-    if (proxy_toggle->value() && all_of_digit(port))
-      server.set_proxy(ip::address::from_string(addr), std::stoul(port));
   };
 
   auto log_box = share(selectable_text_box(""));
@@ -203,7 +203,6 @@ auto make_controls(injector_server &server, view &view_) {
                 htile(
                   hmin_size(100, addr_input),
                   left_margin(5, hsize(100, port_input)),
-                  left_margin(5, apply_proxy),
                   left_margin(10, hold(proxy_toggle)),
                   left_margin(5, log_toggle)
                 ),
