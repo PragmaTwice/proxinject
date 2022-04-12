@@ -27,24 +27,24 @@
 
 using namespace cycfi::elements;
 
-auto constexpr bkd_color = rgba(35, 35, 37, 255);
-auto background = box(bkd_color);
-
+auto constexpr bg_color = rgba(35, 35, 37, 255);
 constexpr auto bred = colors::red.opacity(0.4);
 constexpr auto bblue = colors::blue.opacity(0.4);
 constexpr auto brblue = colors::royal_blue.opacity(0.4);
 
-std::vector<std::pair<DWORD, std::string>> process_vec;
+using process_vector = std::vector<std::pair<DWORD, std::string>>;
 
 struct injectee_session_ui : injectee_session {
   injectee_session_ui(tcp::socket socket, injector_server &server, view &view_,
-                      dynamic_list &list_, selectable_text_box &log_)
+                      dynamic_list &list_, selectable_text_box &log_,
+                      process_vector &process_vec)
       : injectee_session(std::move(socket), server), view_(view_), list_(list_),
-        log_(log_) {}
+        log_(log_), process_vec(process_vec) {}
 
   view &view_;
   dynamic_list &list_;
   selectable_text_box &log_;
+  process_vector &process_vec;
 
   asio::awaitable<void> process_connect(const InjecteeConnect &msg) override {
     std::stringstream stream;
@@ -81,13 +81,13 @@ struct injectee_session_ui : injectee_session {
 };
 
 void do_server(injector_server &server, view &view_, dynamic_list &list,
-               selectable_text_box &log) {
+               selectable_text_box &log, process_vector &process_vec) {
   asio::io_context io_context(1);
 
   asio::co_spawn(io_context,
                  listener<injectee_session_ui>(
                      tcp::acceptor(io_context, proxinject_endpoint), server,
-                     view_, list, log),
+                     view_, list, log, process_vec),
                  asio::detached);
 
   asio::signal_set signals(io_context, SIGINT, SIGTERM);
@@ -96,7 +96,8 @@ void do_server(injector_server &server, view &view_, dynamic_list &list,
   io_context.run();
 }
 
-auto make_controls(injector_server &server, view &view_) {
+auto make_controls(injector_server &server, view &view_,
+                   process_vector &process_vec) {
   auto [process_input, process_input_ptr] = input_box();
   auto [input_select, input_select_ptr] =
       selection_menu([](auto &&) {}, {"pid", "name"});
@@ -135,8 +136,8 @@ auto make_controls(injector_server &server, view &view_) {
     inject_click([&server](DWORD x) { return server.close(x); });
   };
 
-  auto process_list = share(dynamic_list(
-      basic_cell_composer(process_vec.size(), [](size_t index) -> element_ptr {
+  auto process_list = share(dynamic_list(basic_cell_composer(
+      process_vec.size(), [&process_vec](size_t index) -> element_ptr {
         if (index < process_vec.size()) {
           auto [pid, name] = process_vec[index];
           return share(align_center(
@@ -213,6 +214,7 @@ auto make_controls(injector_server &server, view &view_) {
 
 int main(int argc, char *argv[]) {
   injector_server server;
+  process_vector process_vec;
 
   app _app(argc, argv, "proxinject", "proxinject");
   window _win(_app.name());
@@ -220,11 +222,12 @@ int main(int argc, char *argv[]) {
 
   view view_(_win);
 
-  auto &&[controls, list_ptr, log_ptr] = make_controls(server, view_);
-  view_.content(controls, background);
+  auto &&[controls, list_ptr, log_ptr] =
+      make_controls(server, view_, process_vec);
+  view_.content(controls, box(bg_color));
 
   std::thread(do_server, std::ref(server), std::ref(view_), std::ref(*list_ptr),
-              std::ref(*log_ptr))
+              std::ref(*log_ptr), std::ref(process_vec))
       .detach();
 
   _app.run();
