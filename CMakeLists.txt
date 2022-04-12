@@ -31,6 +31,7 @@ set(BUILD_TESTS OFF)
 FetchContent_Declare(protopuf
 	GIT_REPOSITORY https://github.com/PragmaTwice/protopuf
 	GIT_TAG 6b795c2cafef4cdf85854158a25356c6055ab635
+	CMAKE_ARGS -DBUILD_TESTS=${BUILD_TESTS}
 )
 
 FetchContent_MakeAvailable(minhook protopuf)
@@ -53,6 +54,9 @@ FetchContent_Declare(elements
 	GIT_REPOSITORY https://github.com/PragmaTwice/elements
 	GIT_TAG b2a4b570a691c7461f7d09ea52a01cf9bb721c81
 	GIT_SUBMODULES_RECURSE ON
+	CMAKE_ARGS 
+		-DELEMENTS_ASIO_INCLUDE_DIR=${ELEMENTS_ASIO_INCLUDE_DIR}
+		-DELEMENTS_BUILD_EXAMPLES=${ELEMENTS_BUILD_EXAMPLES}
 )
 
 FetchContent_MakeAvailable(elements)
