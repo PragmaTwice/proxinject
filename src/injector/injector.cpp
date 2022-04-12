@@ -34,7 +34,6 @@ constexpr auto bred = colors::red.opacity(0.4);
 constexpr auto bblue = colors::blue.opacity(0.4);
 constexpr auto brblue = colors::royal_blue.opacity(0.4);
 
-injector_server server;
 std::vector<std::pair<DWORD, std::string>> process_vec;
 
 struct injectee_session_ui : injectee_session {
@@ -81,7 +80,8 @@ struct injectee_session_ui : injectee_session {
   }
 };
 
-void do_server(view &view_, dynamic_list &list, selectable_text_box &log) {
+void do_server(injector_server &server, view &view_, dynamic_list &list,
+               selectable_text_box &log) {
   asio::io_context io_context(1);
 
   asio::co_spawn(io_context,
@@ -96,13 +96,14 @@ void do_server(view &view_, dynamic_list &list, selectable_text_box &log) {
   io_context.run();
 }
 
-auto make_controls(view &view_) {
+auto make_controls(injector_server &server, view &view_) {
   auto [process_input, process_input_ptr] = input_box();
   auto [input_select, input_select_ptr] =
       selection_menu([](auto &&) {}, {"pid", "name"});
 
   auto inject_button = icon_button(icons::plus, 1.2, bblue);
-  inject_button.on_click = [input_select_ptr, process_input_ptr](bool) {
+  inject_button.on_click = [&server, input_select_ptr,
+                            process_input_ptr](bool) {
     auto text = trim_copy(process_input_ptr->get_text());
     if (input_select_ptr->get_text() == "pid") {
       if (all_of_digit(text)) {
@@ -110,13 +111,14 @@ auto make_controls(view &view_) {
         server.inject(pid);
       }
     } else {
-      injector::pid_by_name(text, [](DWORD pid) { server.inject(pid); });
+      injector::pid_by_name(text, [&server](DWORD pid) { server.inject(pid); });
     }
     process_input_ptr->set_text("");
   };
 
   auto remove_button = icon_button(icons::cancel, 1.2, bred);
-  remove_button.on_click = [input_select_ptr, process_input_ptr](bool) {
+  remove_button.on_click = [&server, input_select_ptr,
+                            process_input_ptr](bool) {
     auto text = trim_copy(process_input_ptr->get_text());
     if (input_select_ptr->get_text() == "pid") {
       if (std::all_of(text.begin(), text.end(),
@@ -125,7 +127,7 @@ auto make_controls(view &view_) {
         server.close(pid);
       }
     } else {
-      injector::pid_by_name(text, [](DWORD pid) { server.close(pid); });
+      injector::pid_by_name(text, [&server](DWORD pid) { server.close(pid); });
     }
     process_input_ptr->set_text("");
   };
@@ -142,14 +144,14 @@ auto make_controls(view &view_) {
       })));
 
   auto proxy_toggle = share(toggle_icon_button(icons::power, 1.2, brblue));
-  proxy_toggle->on_click = [](bool on) {
+  proxy_toggle->on_click = [&server](bool on) {
     if (!on) {
       server.clear_proxy();
     }
   };
 
   auto log_toggle = toggle_icon_button(icons::doc, 1.2, brblue);
-  log_toggle.on_click = [](bool on) {
+  log_toggle.on_click = [&server](bool on) {
     if (on) {
       server.enable_log();
     } else {
@@ -161,7 +163,8 @@ auto make_controls(view &view_) {
   auto [port_input, port_input_ptr] = input_box("port");
 
   auto apply_proxy = icon_button(icons::ok, 1.2, bblue);
-  apply_proxy.on_click = [proxy_toggle, addr_input_ptr, port_input_ptr](bool) {
+  apply_proxy.on_click = [&server, proxy_toggle, addr_input_ptr,
+                          port_input_ptr](bool) {
     auto addr = trim_copy(addr_input_ptr->get_text());
     auto port = trim_copy(port_input_ptr->get_text());
     if (proxy_toggle->value() && all_of_digit(port))
@@ -213,16 +216,18 @@ auto make_controls(view &view_) {
 }
 
 int main(int argc, char *argv[]) {
+  injector_server server;
+
   app _app(argc, argv, "proxinject", "proxinject");
   window _win(_app.name());
   _win.on_close = [&_app]() { _app.stop(); };
 
   view view_(_win);
 
-  auto &&[controls, list_ptr, log_ptr] = make_controls(view_);
+  auto &&[controls, list_ptr, log_ptr] = make_controls(server, view_);
   view_.content(controls, background);
 
-  std::thread(do_server, std::ref(view_), std::ref(*list_ptr),
+  std::thread(do_server, std::ref(server), std::ref(view_), std::ref(*list_ptr),
               std::ref(*log_ptr))
       .detach();
 
