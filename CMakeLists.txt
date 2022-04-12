@@ -51,7 +51,7 @@ set(ELEMENTS_ASIO_INCLUDE_DIR ${asio_SOURCE_DIR}/asio/include)
 set(ELEMENTS_BUILD_EXAMPLES OFF)
 FetchContent_Declare(elements
 	GIT_REPOSITORY https://github.com/PragmaTwice/elements
-	GIT_TAG b9e077828dadac1aaa481a89068991be792e81db
+	GIT_TAG b2a4b570a691c7461f7d09ea52a01cf9bb721c81
 	GIT_SUBMODULES_RECURSE ON
 )
 
