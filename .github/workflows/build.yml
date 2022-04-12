@@ -30,4 +30,5 @@ jobs:
         name: build-${{ matrix.build_type }}
         path: |
           ${{github.workspace}}\build\${{ matrix.build_type }}
+          ${{github.workspace}}\build\*.dll
         retention-days: 7
