@@ -72,19 +72,14 @@ struct injector_server {
 
   void clear_proxy() { config_proxy(std::nullopt); }
 
-  void enable_log() {
+  void enable_log(bool enable = true) {
     std::lock_guard guard(config_mutex);
-    config_["log"_f] = true;
+    config_["log"_f] = enable;
 
     broadcast_config();
   }
 
-  void disable_log() {
-    std::lock_guard guard(config_mutex);
-    config_["log"_f] = false;
-
-    broadcast_config();
-  }
+  void disable_log() { enable_log(false); }
 
   InjectorConfig get_config() {
     std::lock_guard guard(config_mutex);

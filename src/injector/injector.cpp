@@ -166,13 +166,7 @@ auto make_controls(injector_server &server, view &view_) {
   };
 
   auto log_toggle = toggle_icon_button(icons::doc, 1.2, brblue);
-  log_toggle.on_click = [&server](bool on) {
-    if (on) {
-      server.enable_log();
-    } else {
-      server.disable_log();
-    }
-  };
+  log_toggle.on_click = [&server](bool on) { server.enable_log(on); };
 
   auto log_box = share(selectable_text_box(""));
 
