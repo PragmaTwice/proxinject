@@ -24,11 +24,13 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{ matrix.build_type }}
     
+    - name: Move dlls
+      run: mv ${{github.workspace}}\build\*.dll ${{github.workspace}}\build\${{ matrix.build_type }}
+
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.0.0
       with:
         name: build-${{ matrix.build_type }}
         path: |
           ${{github.workspace}}\build\${{ matrix.build_type }}
-          ${{github.workspace}}\build\*.dll
         retention-days: 7
