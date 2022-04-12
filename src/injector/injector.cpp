@@ -141,8 +141,8 @@ auto make_controls(injector_server &server, view &view_,
         if (index < process_vec.size()) {
           auto [pid, name] = process_vec[index];
           return share(align_center(
-              htile(align_center(hmax_size(80, label(std::to_string(pid)))),
-                    align_center(hmin_size(100, label(name))))));
+              htile(hsize(80, align_center(label(std::to_string(pid)))),
+                    hmin_size(120, align_center(label(name))))));
         }
         return share(align_center(label("unknown")));
       })));
@@ -184,7 +184,7 @@ auto make_controls(injector_server &server, view &view_,
                 left_margin(5, remove_button)
               ),
               top_margin(10, 
-                vmin_size(200, 
+                vmin_size(250, 
                   layer(vscroller(hold(process_list)), frame())
                 )
               )
@@ -200,7 +200,7 @@ auto make_controls(injector_server &server, view &view_,
                   left_margin(5, log_toggle)
                 ),
                 top_margin(10,
-                  vmin_size(200, 
+                  vmin_size(250, 
                     layer(vscroller(hold(log_box)), frame())
                   )
                 )
