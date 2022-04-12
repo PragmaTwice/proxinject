@@ -108,9 +108,10 @@ auto make_controls(injector_server &server, view &view_) {
     if (input_select_ptr->get_text() == "pid") {
       if (all_of_digit(text)) {
         DWORD pid = std::stoul(text);
-        server.inject(pid);
+        if (pid != 0)
+          server.inject(pid);
       }
-    } else {
+    } else if (!text.empty()) {
       injector::pid_by_name(text, [&server](DWORD pid) { server.inject(pid); });
     }
     process_input_ptr->set_text("");
@@ -121,12 +122,12 @@ auto make_controls(injector_server &server, view &view_) {
                             process_input_ptr](bool) {
     auto text = trim_copy(process_input_ptr->get_text());
     if (input_select_ptr->get_text() == "pid") {
-      if (std::all_of(text.begin(), text.end(),
-                      [](char c) { return std::isdigit(c); })) {
+      if (all_of_digit(text)) {
         DWORD pid = std::stoul(text);
-        server.close(pid);
+        if (pid != 0)
+          server.close(pid);
       }
-    } else {
+    } else if (!text.empty()) {
       injector::pid_by_name(text, [&server](DWORD pid) { server.close(pid); });
     }
     process_input_ptr->set_text("");
