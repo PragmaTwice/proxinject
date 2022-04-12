@@ -101,40 +101,38 @@ auto make_controls(injector_server &server, view &view_) {
   auto [input_select, input_select_ptr] =
       selection_menu([](auto &&) {}, {"pid", "name"});
 
-  auto inject_button = icon_button(icons::plus, 1.2, bblue);
-  inject_button.on_click = [&server, input_select_ptr,
-                            process_input_ptr](bool) {
+  auto inject_click = [input_select_ptr, process_input_ptr]<typename F>(F &&f) {
     auto text = trim_copy(process_input_ptr->get_text());
     if (text.empty())
       return;
     if (input_select_ptr->get_text() == "pid") {
       if (all_of_digit(text)) {
         DWORD pid = std::stoul(text);
-        if (pid != 0)
-          server.inject(pid);
+        if (pid == 0)
+          return;
+        if (!std::forward<F>(f)(pid))
+          return;
       }
     } else {
-      injector::pid_by_name(text, [&server](DWORD pid) { server.inject(pid); });
+      bool success = false;
+      injector::pid_by_name(text, [&success, &f](DWORD pid) {
+        if (std::forward<F>(f)(pid))
+          success = true;
+      });
+      if (!success)
+        return;
     }
     process_input_ptr->set_text("");
   };
 
+  auto inject_button = icon_button(icons::plus, 1.2, bblue);
+  inject_button.on_click = [&server, inject_click](bool) {
+    inject_click([&server](DWORD x) { return server.inject(x); });
+  };
+
   auto remove_button = icon_button(icons::cancel, 1.2, bred);
-  remove_button.on_click = [&server, input_select_ptr,
-                            process_input_ptr](bool) {
-    auto text = trim_copy(process_input_ptr->get_text());
-    if (text.empty())
-      return;
-    if (input_select_ptr->get_text() == "pid") {
-      if (all_of_digit(text)) {
-        DWORD pid = std::stoul(text);
-        if (pid != 0)
-          server.close(pid);
-      }
-    } else {
-      injector::pid_by_name(text, [&server](DWORD pid) { server.close(pid); });
-    }
-    process_input_ptr->set_text("");
+  remove_button.on_click = [&server, inject_click](bool) {
+    inject_click([&server](DWORD x) { return server.close(x); });
   };
 
   auto process_list = share(dynamic_list(
