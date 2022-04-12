@@ -57,10 +57,7 @@ FetchContent_Declare(elements
 
 FetchContent_MakeAvailable(elements)
 
-set(ver ${CMAKE_SYSTEM_VERSION})
-string(REPLACE "." "" ver ${ver})
-string(REGEX REPLACE "([0-9])" "0\\1" ver ${ver})
-set(version "0x${ver}")
+set(WIN32_VER 0x0A00)
 
 file(GLOB INJECTEE_SRCS src/injectee/*.cpp)
 
@@ -68,7 +65,7 @@ add_library(proxinjectee SHARED ${INJECTEE_SRCS})
 target_compile_features(proxinjectee PUBLIC cxx_std_20)
 target_link_libraries(proxinjectee PUBLIC minhook ws2_32 protopuf)
 target_include_directories(proxinjectee PUBLIC ${asio_SOURCE_DIR}/asio/include src/common)
-target_compile_definitions(proxinjectee PUBLIC -D_WIN32_WINNT=${version} -DUNICODE)
+target_compile_definitions(proxinjectee PUBLIC -D_WIN32_WINNT=${WIN32_VER} -DUNICODE)
 
 file(GLOB INJECTOR_SRCS src/injector/*.cpp)
 
@@ -82,4 +79,4 @@ include(ElementsConfigApp)
 target_compile_features(proxinjector PUBLIC cxx_std_20)
 target_link_libraries(proxinjector PUBLIC protopuf)
 target_include_directories(proxinjector PUBLIC ${asio_SOURCE_DIR}/asio/include src/common)
-target_compile_definitions(proxinjector PUBLIC -D_WIN32_WINNT=${version} -DUNICODE)
+target_compile_definitions(proxinjector PUBLIC -D_WIN32_WINNT=${WIN32_VER} -DUNICODE)
