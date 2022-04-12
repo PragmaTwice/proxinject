@@ -105,13 +105,15 @@ auto make_controls(injector_server &server, view &view_) {
   inject_button.on_click = [&server, input_select_ptr,
                             process_input_ptr](bool) {
     auto text = trim_copy(process_input_ptr->get_text());
+    if (text.empty())
+      return;
     if (input_select_ptr->get_text() == "pid") {
       if (all_of_digit(text)) {
         DWORD pid = std::stoul(text);
         if (pid != 0)
           server.inject(pid);
       }
-    } else if (!text.empty()) {
+    } else {
       injector::pid_by_name(text, [&server](DWORD pid) { server.inject(pid); });
     }
     process_input_ptr->set_text("");
@@ -121,13 +123,15 @@ auto make_controls(injector_server &server, view &view_) {
   remove_button.on_click = [&server, input_select_ptr,
                             process_input_ptr](bool) {
     auto text = trim_copy(process_input_ptr->get_text());
+    if (text.empty())
+      return;
     if (input_select_ptr->get_text() == "pid") {
       if (all_of_digit(text)) {
         DWORD pid = std::stoul(text);
         if (pid != 0)
           server.close(pid);
       }
-    } else if (!text.empty()) {
+    } else {
       injector::pid_by_name(text, [&server](DWORD pid) { server.close(pid); });
     }
     process_input_ptr->set_text("");
