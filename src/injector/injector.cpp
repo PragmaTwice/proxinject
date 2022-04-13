@@ -107,13 +107,14 @@ auto make_controls(injector_server &server, view &view_,
     if (text.empty())
       return;
     if (input_select_ptr->get_text() == "pid") {
-      if (all_of_digit(text)) {
-        DWORD pid = std::stoul(text);
-        if (pid == 0)
-          return;
-        if (!std::forward<F>(f)(pid))
-          return;
-      }
+      if (!all_of_digit(text))
+        return;
+
+      DWORD pid = std::stoul(text);
+      if (pid == 0)
+        return;
+      if (!std::forward<F>(f)(pid))
+        return;
     } else {
       bool success = false;
       injector::pid_by_name(text, [&success, &f](DWORD pid) {
