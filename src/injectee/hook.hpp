@@ -29,7 +29,8 @@ template <auto F> struct hook_connect_fn : minhook::api<F, hook_connect_fn<F>> {
   using base = minhook::api<F, hook_connect_fn<F>>;
 
   template <typename... T>
-  static int detour(SOCKET s, const sockaddr *name, int namelen, T... args) {
+  static int WSAAPI detour(SOCKET s, const sockaddr *name, int namelen,
+                           T... args) {
     if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) && config &&
         !is_localhost(name)) {
       auto cfg = config->get();
@@ -68,10 +69,11 @@ struct hook_WSAConnect : hook_connect_fn<WSAConnect> {};
 
 struct hook_WSAConnectByList
     : minhook::api<WSAConnectByList, hook_WSAConnectByList> {
-  static BOOL detour(SOCKET s, PSOCKET_ADDRESS_LIST SocketAddress,
-                     LPDWORD LocalAddressLength, LPSOCKADDR LocalAddress,
-                     LPDWORD RemoteAddressLength, LPSOCKADDR RemoteAddress,
-                     const timeval *timeout, LPWSAOVERLAPPED Reserved) {
+  static BOOL PASCAL detour(SOCKET s, PSOCKET_ADDRESS_LIST SocketAddress,
+                            LPDWORD LocalAddressLength, LPSOCKADDR LocalAddress,
+                            LPDWORD RemoteAddressLength,
+                            LPSOCKADDR RemoteAddress, const timeval *timeout,
+                            LPWSAOVERLAPPED Reserved) {
     return original(s, SocketAddress, LocalAddressLength, LocalAddress,
                     RemoteAddressLength, RemoteAddress, timeout, Reserved);
   }

@@ -16,10 +16,10 @@
 #ifndef PROXINJECT_COMMON_WINRAII
 #define PROXINJECT_COMMON_WINRAII
 
+#include "tlhelp32.h"
 #include <Windows.h>
 #include <memory>
 #include <optional>
-#include "tlhelp32.h"
 
 template <auto f> struct static_function {
   template <typename T> decltype(auto) operator()(T &&x) const {
@@ -38,9 +38,9 @@ struct handle : std::unique_ptr<void, static_function<CloseHandle>> {
 struct virtual_memory {
   void *const proc_handle;
   void *const mem_addr;
-  const size_t size_;
+  const SIZE_T size_;
 
-  virtual_memory(void *proc_handle, size_t size)
+  virtual_memory(void *proc_handle, SIZE_T size)
       : proc_handle(proc_handle),
         mem_addr(VirtualAllocEx(proc_handle, nullptr, size,
                                 MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE)),
@@ -58,10 +58,10 @@ struct virtual_memory {
 
   void *process_handle() const { return proc_handle; }
 
-  size_t size() const { return size_; }
+  SIZE_T size() const { return size_; }
 
-  std::optional<size_t> write(const void *buf, size_t n) const {
-    size_t written_size;
+  std::optional<SIZE_T> write(const void *buf, SIZE_T n) const {
+    SIZE_T written_size;
 
     if (WriteProcessMemory(proc_handle, mem_addr, buf, n, &written_size)) {
       return written_size;
@@ -72,8 +72,8 @@ struct virtual_memory {
 
   auto write(const void *buf) { return write(buf, size_); }
 
-  std::optional<size_t> read(void *buf, size_t n) const {
-    size_t read_size;
+  std::optional<SIZE_T> read(void *buf, SIZE_T n) const {
+    SIZE_T read_size;
 
     if (ReadProcessMemory(proc_handle, mem_addr, buf, n, &read_size)) {
       return read_size;
