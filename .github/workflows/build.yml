@@ -14,12 +14,13 @@ jobs:
     strategy:
       matrix:
         build_type: [ Debug, Release ]
+        arch: [ Win32, x64 ]
 
     steps:
     - uses: actions/checkout@v3
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -A ${{ matrix.arch }}
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{ matrix.build_type }}
@@ -32,7 +33,7 @@ jobs:
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.0.0
       with:
-        name: build-${{ matrix.build_type }}
+        name: build-${{ matrix.build_type }}-${{ matrix.arch }}
         path: |
           ${{github.workspace}}\build\${{ matrix.build_type }}
         retention-days: 7
