@@ -1,6 +1,6 @@
 # proxinject
 
-a socks5 proxy injection tool for Windows, making all programs proxy-able
+a socks5 proxy injection tool for Windows: just select some processes and make them proxy-able!
 
 ## development dependences
 
