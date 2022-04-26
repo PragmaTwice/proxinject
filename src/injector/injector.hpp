@@ -19,15 +19,30 @@
 #include "winraii.hpp"
 #include <filesystem>
 
-namespace cycfi::elements {
-// UTF8 conversion utils defined in base_view.cpp
+// utf8_encode/decode from cycfi::elements
 
-std::string utf8_encode(std::wstring const &wstr);
+// Convert a wide Unicode string to an UTF8 string
+std::string utf8_encode(std::wstring const &wstr) {
+  if (wstr.empty())
+    return {};
+  int size = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(),
+                                 nullptr, 0, nullptr, nullptr);
+  std::string result(size, 0);
+  WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &result[0], size,
+                      nullptr, nullptr);
+  return result;
+}
 
-std::wstring utf8_decode(std::string const &str);
-} // namespace cycfi::elements
-
-namespace ce = cycfi::elements;
+// Convert an UTF8 string to a wide Unicode String
+std::wstring utf8_decode(std::string const &str) {
+  if (str.empty())
+    return {};
+  int size =
+      MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), nullptr, 0);
+  std::wstring result(size, 0);
+  MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &result[0], size);
+  return result;
+}
 
 namespace fs = std::filesystem;
 
@@ -81,7 +96,7 @@ struct injector {
 
   template <typename F> static void pid_by_name(std::string_view name, F &&f) {
     match_process([name, &f](std::wstring file, DWORD pid) {
-      std::string file_u8 = ce::utf8_encode(file);
+      std::string file_u8 = utf8_encode(file);
       if (file_u8.ends_with(".exe") &&
           file_u8.substr(0, file_u8.size() - 4) == name) {
         std::forward<F>(f)(pid);
@@ -97,11 +112,44 @@ struct injector {
       }
     });
 
-    std::string res_u8 = ce::utf8_encode(result);
+    std::string res_u8 = utf8_encode(result);
     if (res_u8.ends_with(".exe")) {
       return res_u8.substr(0, res_u8.size() - 4);
     }
     return res_u8;
+  }
+
+  static std::optional<DWORD> create_process(const std::wstring &path) {
+    fs::path p(path);
+
+    if (p.parent_path().empty()) {
+      wchar_t realpath[MAX_PATH];
+
+      if (SearchPathW(nullptr, p.c_str(), L".exe", MAX_PATH, realpath,
+                      nullptr) == 0) {
+        return std::nullopt;
+      }
+      p = realpath;
+    }
+
+    if (!fs::exists(p)) {
+      return std::nullopt;
+    }
+
+    STARTUPINFO startup_info{};
+    PROCESS_INFORMATION process_info{};
+    if (CreateProcessW(p.c_str(), nullptr, nullptr, nullptr, false,
+                       CREATE_NEW_CONSOLE, nullptr, nullptr,
+                       &startup_info, &process_info) == 0) {
+      return std::nullopt;
+    }
+
+    return process_info.dwProcessId;
+  }
+
+  static std::optional<DWORD> create_process(const std::string &path) {
+    auto wpath = utf8_decode(path);
+    return create_process(wpath);
   }
 };
 

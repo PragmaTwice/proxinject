@@ -13,13 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PROXINJECT_INJECTOR_UI
-#define PROXINJECT_INJECTOR_UI
+#ifndef PROXINJECT_INJECTOR_INJECTOR_GUI
+#define PROXINJECT_INJECTOR_INJECTOR_GUI
 
 #include "server.hpp"
 #include "utils.hpp"
 #include <elements.hpp>
 #include <sstream>
+#include "text_box.hpp"
 
 namespace ce = cycfi::elements;
 
@@ -84,13 +85,14 @@ auto make_controls(injector_server &server, ce::view &view,
 
   auto [process_input, process_input_ptr] = input_box();
   auto [input_select, input_select_ptr] =
-      selection_menu([](auto &&) {}, {"pid", "name"});
+      selection_menu([](auto &&) {}, {"pid", "name", "create"});
 
   auto inject_click = [input_select_ptr, process_input_ptr]<typename F>(F &&f) {
     auto text = trim_copy(process_input_ptr->get_text());
     if (text.empty())
       return;
-    if (input_select_ptr->get_text() == "pid") {
+    auto option = input_select_ptr->get_text();
+    if (option == "pid") {
       if (!all_of_digit(text))
         return;
 
@@ -99,7 +101,7 @@ auto make_controls(injector_server &server, ce::view &view,
         return;
       if (!std::forward<F>(f)(pid))
         return;
-    } else {
+    } else if (option == "name") {
       bool success = false;
       injector::pid_by_name(text, [&success, &f](DWORD pid) {
         if (std::forward<F>(f)(pid))
@@ -107,6 +109,15 @@ auto make_controls(injector_server &server, ce::view &view,
       });
       if (!success)
         return;
+    } else if (option == "create") {
+      auto res = injector::create_process(text);
+      if (!res) {
+        return;
+      }
+
+      if (!std::forward<F>(f)(res.value())) {
+        return;
+      }
     }
     process_input_ptr->set_text("");
   };

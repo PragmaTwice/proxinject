@@ -16,9 +16,9 @@
 #include <asio.hpp>
 
 #include "injector.hpp"
+#include "injector_gui.hpp"
 #include "server.hpp"
 #include "text_box.hpp"
-#include "ui.hpp"
 #include "utils.hpp"
 
 void do_server(injector_server &server, ce::view &view,

@@ -33,7 +33,12 @@ FetchContent_Declare(protopuf
 	GIT_TAG 6b795c2cafef4cdf85854158a25356c6055ab635
 )
 
-FetchContent_MakeAvailable(minhook protopuf)
+FetchContent_Declare(argparse
+	GIT_REPOSITORY https://github.com/p-ranav/argparse
+	GIT_TAG v2.4
+)
+
+FetchContent_MakeAvailable(minhook protopuf argparse)
 
 FetchContent_Declare(asio
 	GIT_REPOSITORY https://github.com/chriskohlhoff/asio
@@ -67,10 +72,10 @@ target_link_libraries(proxinjectee PUBLIC minhook ws2_32 protopuf)
 target_include_directories(proxinjectee PUBLIC ${asio_SOURCE_DIR}/asio/include src/common)
 target_compile_definitions(proxinjectee PUBLIC -D_WIN32_WINNT=${WIN32_VER} -DUNICODE)
 
-file(GLOB INJECTOR_SRCS src/injector/*.cpp)
+file(GLOB INJECTOR_GUI_SRCS src/injector/injector_gui.cpp src/injector/text_box.cpp)
 
 set(ELEMENTS_APP_PROJECT proxinjector)
-set(ELEMENTS_APP_SOURCES ${INJECTOR_SRCS})
+set(ELEMENTS_APP_SOURCES ${INJECTOR_GUI_SRCS})
 
 set(ELEMENTS_ROOT ${elements_SOURCE_DIR})
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${ELEMENTS_ROOT}/cmake")
@@ -80,3 +85,11 @@ target_compile_features(proxinjector PUBLIC cxx_std_20)
 target_link_libraries(proxinjector PUBLIC protopuf)
 target_include_directories(proxinjector PUBLIC ${asio_SOURCE_DIR}/asio/include src/common)
 target_compile_definitions(proxinjector PUBLIC -D_WIN32_WINNT=${WIN32_VER} -DUNICODE)
+
+file(GLOB INJECTOR_CLI_SRCS src/injector/injector_cli.cpp)
+
+add_executable(proxinjector-cli ${INJECTOR_CLI_SRCS})
+target_compile_features(proxinjector-cli PUBLIC cxx_std_20)
+target_link_libraries(proxinjector-cli PUBLIC protopuf argparse)
+target_include_directories(proxinjector-cli PUBLIC ${asio_SOURCE_DIR}/asio/include src/common)
+target_compile_definitions(proxinjector-cli PUBLIC -D_WIN32_WINNT=${WIN32_VER} -DUNICODE)

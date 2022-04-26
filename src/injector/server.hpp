@@ -18,6 +18,7 @@
 
 #include "async_io.hpp"
 #include "schema.hpp"
+#include "injector.hpp"
 #include <asio.hpp>
 #include <map>
 
@@ -165,10 +166,10 @@ struct injectee_session : injectee_client,
   }
 
   void stop() {
-    process_close();
     socket_.close();
     timer_.cancel();
     server_.remove(pid_);
+    process_close();
   }
 };
 
