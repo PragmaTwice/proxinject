@@ -38,7 +38,12 @@ FetchContent_Declare(argparse
 	GIT_TAG v2.4
 )
 
-FetchContent_MakeAvailable(minhook protopuf argparse)
+FetchContent_Declare(spdlog
+	GIT_REPOSITORY https://github.com/gabime/spdlog
+	GIT_TAG v1.10.0
+)
+
+FetchContent_MakeAvailable(minhook protopuf argparse spdlog)
 
 FetchContent_Declare(asio
 	GIT_REPOSITORY https://github.com/chriskohlhoff/asio
@@ -90,6 +95,6 @@ file(GLOB INJECTOR_CLI_SRCS src/injector/injector_cli.cpp)
 
 add_executable(proxinjector-cli ${INJECTOR_CLI_SRCS})
 target_compile_features(proxinjector-cli PUBLIC cxx_std_20)
-target_link_libraries(proxinjector-cli PUBLIC protopuf argparse)
+target_link_libraries(proxinjector-cli PUBLIC protopuf argparse spdlog)
 target_include_directories(proxinjector-cli PUBLIC ${asio_SOURCE_DIR}/asio/include src/common)
 target_compile_definitions(proxinjector-cli PUBLIC -D_WIN32_WINNT=${WIN32_VER} -DUNICODE)

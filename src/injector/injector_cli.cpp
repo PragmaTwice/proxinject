@@ -20,30 +20,36 @@
 #include "utils.hpp"
 #include <argparse/argparse.hpp>
 #include <iostream>
+#include <spdlog/fmt/ostr.h>
+#include <spdlog/spdlog.h>
 
 using argparse::ArgumentParser;
 using namespace std;
+using namespace spdlog;
 
 struct injectee_session_cli : injectee_session {
   using injectee_session::injectee_session;
 
   asio::awaitable<void> process_connect(const InjecteeConnect &msg) override {
-    cout << (int)pid_ << ": connect " << msg["addr"_f].value();
     if (auto v = msg["proxy"_f])
-      cout << " via " << *v;
-    cout << endl;
+      info("{}: connect {} via {}", (int)pid_, *msg["addr"_f], *v);
+    else
+      info("{}: connect {}", (int)pid_, *msg["addr"_f]);
     co_return;
   }
 
   asio::awaitable<void> process_pid() override {
-    cout << (int)pid_ << ": established injectee connection" << endl;
+    info("{}: established injectee connection", (int)pid_);
     co_return;
   }
 
   void process_close() override {
-    cout << (int)pid_ << ": closed" << endl;
+    info("{}: closed", (int)pid_);
     if (server_.clients.size() == 0) {
-      socket_.get_executor().target<asio::io_context>()->stop();
+      info("all process have been exited, exit");
+
+      auto exec = socket_.get_executor();
+      exec.target<asio::io_context>()->stop();
     }
   }
 };
@@ -96,7 +102,17 @@ int main(int argc, char *argv[]) {
   } catch (const runtime_error &err) {
     cerr << err.what() << endl;
     cerr << parser;
-    exit(1);
+    return 1;
+  }
+
+  auto pids = parser.get<vector<int>>("-i");
+  auto proc_names = parser.get<vector<string>>("-n");
+  auto create_paths = parser.get<vector<string>>("-c");
+
+  if (pids.empty() && proc_names.empty() && create_paths.empty()) {
+    cerr << "Expected at least one of `-i`, `-n` or `-c`" << endl;
+    cerr << parser;
+    return 2;
   }
 
   asio::io_context io_context(1);
@@ -114,7 +130,7 @@ int main(int argc, char *argv[]) {
 
   if (parser.get<bool>("-l")) {
     server.enable_log();
-    cout << "logging enabled" << endl;
+    info("logging enabled");
   }
 
   if (auto proxy_str = trim_copy(parser.get<string>("-p"));
@@ -122,40 +138,42 @@ int main(int argc, char *argv[]) {
     if (auto res = parse_address(proxy_str)) {
       auto [addr, port] = res.value();
       server.set_proxy(ip::address::from_string(addr), port);
-      cout << "proxy address set to " << addr << ":" << port << endl;
+      info("proxy address set to {}:{}", addr, port);
     }
   }
 
   bool has_process = false;
+  auto report_injected = [&has_process](DWORD pid) {
+    info("{}: injected", pid);
+    has_process = true;
+  };
 
-  for (auto pid : parser.get<vector<int>>("-i")) {
+  for (auto pid : pids) {
     if (pid > 0) {
       if (server.inject(pid)) {
-        cout << pid << ": injected" << endl;
-        has_process = true;
+        report_injected(pid);
       }
     }
   }
 
-  for (const auto &name : parser.get<vector<string>>("-n")) {
-    injector::pid_by_name(name, [&server, &has_process](DWORD pid) {
+  for (const auto &name : proc_names) {
+    injector::pid_by_name(name, [&server, &report_injected](DWORD pid) {
       if (server.inject(pid)) {
-        cout << pid << ": injected" << endl;
-        has_process = true;
+        report_injected(pid);
       }
     });
   }
 
-  for (const auto &file : parser.get<vector<string>>("-c")) {
+  for (const auto &file : create_paths) {
     if (auto res = injector::create_process(file)) {
       if (server.inject(*res)) {
-        cout << *res << ": injected" << endl;
-        has_process = true;
+        report_injected(*res);
       }
     }
   }
 
   if (!has_process) {
+    info("no process has been injected, exit");
     io_context.stop();
   }
 

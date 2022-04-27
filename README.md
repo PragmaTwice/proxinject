@@ -12,8 +12,18 @@ a socks5 proxy injection tool for Windows: just select some processes and make t
 #### libraries: 
 (you do not need to download/install them manually)
 
+##### proxinjectee
 - minhook
 - asio (standalone)
-- protopuf
-- cycfi::elements
+- PragmaTwice/protopuf
 
+##### proxinjector GUI
+- asio (standalone)
+- PragmaTwice/protopuf
+- cycfi/elements
+
+##### proxinjector CLI
+- asio (standalone)
+- PragmaTwice/protopuf
+- p-ranav/argparse
+- gabime/spdlog
