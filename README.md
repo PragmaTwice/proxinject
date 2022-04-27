@@ -4,25 +4,25 @@ a socks5 proxy injection tool for Windows: just select some processes and make t
 
 ## development dependences
 
-#### environments:
+### environments:
 
 - C++ compiler (with C++20 support)
 - Windows SDK (with winsock2 support)
 
-#### libraries: 
+### libraries: 
 (you do not need to download/install them manually)
 
-##### proxinjectee
+#### proxinjectee
 - minhook
 - asio (standalone)
 - PragmaTwice/protopuf
 
-##### proxinjector GUI
+#### proxinjector GUI
 - asio (standalone)
 - PragmaTwice/protopuf
 - cycfi/elements
 
-##### proxinjector CLI
+#### proxinjector CLI
 - asio (standalone)
 - PragmaTwice/protopuf
 - p-ranav/argparse
