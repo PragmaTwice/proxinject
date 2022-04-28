@@ -119,37 +119,23 @@ struct injector {
     return res_u8;
   }
 
-  static std::optional<DWORD> create_process(const std::wstring &path) {
-    fs::path p(path);
-
-    if (p.parent_path().empty()) {
-      wchar_t realpath[MAX_PATH];
-
-      if (SearchPathW(nullptr, p.c_str(), L".exe", MAX_PATH, realpath,
-                      nullptr) == 0) {
-        return std::nullopt;
-      }
-      p = realpath;
-    }
-
-    if (!fs::exists(p)) {
-      return std::nullopt;
-    }
-
+  static std::optional<DWORD> create_process(const std::wstring &command,
+                                             bool new_console = false) {
     STARTUPINFO startup_info{};
     PROCESS_INFORMATION process_info{};
-    if (CreateProcessW(p.c_str(), nullptr, nullptr, nullptr, false,
-                       CREATE_NEW_CONSOLE, nullptr, nullptr,
-                       &startup_info, &process_info) == 0) {
+    if (CreateProcessW(nullptr, std::wstring{command}.data(), nullptr, nullptr,
+                       false, new_console ? CREATE_NEW_CONSOLE : 0, nullptr,
+                       nullptr, &startup_info, &process_info) == 0) {
       return std::nullopt;
     }
 
     return process_info.dwProcessId;
   }
 
-  static std::optional<DWORD> create_process(const std::string &path) {
+  static std::optional<DWORD> create_process(const std::string &path,
+                                             bool new_console = false) {
     auto wpath = utf8_decode(path);
-    return create_process(wpath);
+    return create_process(wpath, new_console);
   }
 };
 

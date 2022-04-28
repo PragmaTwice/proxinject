@@ -85,7 +85,7 @@ auto make_controls(injector_server &server, ce::view &view,
 
   auto [process_input, process_input_ptr] = input_box();
   auto [input_select, input_select_ptr] =
-      selection_menu([](auto &&) {}, {"pid", "name", "create"});
+      selection_menu([](auto &&) {}, {"pid", "name", "exec"});
 
   auto inject_click = [input_select_ptr, process_input_ptr]<typename F>(F &&f) {
     auto text = trim_copy(process_input_ptr->get_text());
@@ -109,7 +109,7 @@ auto make_controls(injector_server &server, ce::view &view,
       });
       if (!success)
         return;
-    } else if (option == "create") {
+    } else if (option == "exec") {
       auto res = injector::create_process(text);
       if (!res) {
         return;

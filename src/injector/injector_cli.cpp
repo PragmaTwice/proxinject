@@ -81,9 +81,10 @@ int main(int argc, char *argv[]) {
       .default_value(vector<string>{})
       .append();
 
-  parser.add_argument("-c", "--create")
-      .help("filename of an executable to create a new process and inject "
-            "proxy (string, i.e. `python` or `C:\\Program Files\\a.exe`)")
+  parser.add_argument("-e", "--exec")
+      .help("command line started with an executable to create a new process "
+            "and inject proxy (string, i.e. `python` or `C:\\Program "
+            "Files\\a.exe --some-option`)")
       .default_value(vector<string>{})
       .append();
 
@@ -97,6 +98,12 @@ int main(int argc, char *argv[]) {
             "`127.0.0.1:1080`)")
       .default_value(string{});
 
+  parser.add_argument("-w", "--new-console-window")
+      .help("create a new console window while a new console process is "
+            "executed in `-e`")
+      .default_value(false)
+      .implicit_value(true);
+
   try {
     parser.parse_args(argc, argv);
   } catch (const runtime_error &err) {
@@ -107,10 +114,10 @@ int main(int argc, char *argv[]) {
 
   auto pids = parser.get<vector<int>>("-i");
   auto proc_names = parser.get<vector<string>>("-n");
-  auto create_paths = parser.get<vector<string>>("-c");
+  auto create_paths = parser.get<vector<string>>("-e");
 
   if (pids.empty() && proc_names.empty() && create_paths.empty()) {
-    cerr << "Expected at least one of `-i`, `-n` or `-c`" << endl;
+    cerr << "Expected at least one of `-i`, `-n` or `-e`" << endl;
     cerr << parser;
     return 2;
   }
@@ -165,7 +172,7 @@ int main(int argc, char *argv[]) {
   }
 
   for (const auto &file : create_paths) {
-    if (auto res = injector::create_process(file)) {
+    if (auto res = injector::create_process(file, parser.get<bool>("-w"))) {
       if (server.inject(*res)) {
         report_injected(*res);
       }
