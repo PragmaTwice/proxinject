@@ -17,6 +17,10 @@ cmake_minimum_required(VERSION 3.20)
 
 project(proxinject)
 
+if(NOT WIN32)
+	message(FATAL_ERROR "support Windows only")
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -67,15 +71,30 @@ FetchContent_Declare(elements
 
 FetchContent_MakeAvailable(elements)
 
-set(WIN32_VER 0x0A00)
+set(WIN32_VERSION 0x0A00)
+
+execute_process(COMMAND git describe --tags
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	RESULT_VARIABLE GIT_DESCRIBE_EXITCODE
+	OUTPUT_VARIABLE PROXINJECT_VERSION)
+
+if(NOT GIT_DESCRIBE_EXITCODE EQUAL 0)
+	set(PROXINJECT_VERSION "")
+endif()
+
+string(STRIP ${PROXINJECT_VERSION} PROXINJECT_VERSION)
+configure_file(src/common/version.hpp.in src/common/version.hpp)
+
+add_library(proxinject_common INTERFACE)
+target_include_directories(proxinject_common INTERFACE src/common ${CMAKE_BINARY_DIR}/src/common)
+target_compile_definitions(proxinject_common INTERFACE -D_WIN32_WINNT=${WIN32_VERSION} -DUNICODE)
 
 file(GLOB INJECTEE_SRCS src/injectee/*.cpp)
 
 add_library(proxinjectee SHARED ${INJECTEE_SRCS})
 target_compile_features(proxinjectee PUBLIC cxx_std_20)
-target_link_libraries(proxinjectee PUBLIC minhook ws2_32 protopuf)
-target_include_directories(proxinjectee PUBLIC ${asio_SOURCE_DIR}/asio/include src/common)
-target_compile_definitions(proxinjectee PUBLIC -D_WIN32_WINNT=${WIN32_VER} -DUNICODE)
+target_link_libraries(proxinjectee PUBLIC minhook ws2_32 protopuf proxinject_common)
+target_include_directories(proxinjectee PUBLIC ${asio_SOURCE_DIR}/asio/include)
 
 file(GLOB INJECTOR_GUI_SRCS src/injector/injector_gui.cpp src/injector/text_box.cpp)
 
@@ -87,14 +106,12 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${ELEMENTS_ROOT}/cmake")
 include(ElementsConfigApp)
 
 target_compile_features(proxinjector PUBLIC cxx_std_20)
-target_link_libraries(proxinjector PUBLIC protopuf)
-target_include_directories(proxinjector PUBLIC ${asio_SOURCE_DIR}/asio/include src/common)
-target_compile_definitions(proxinjector PUBLIC -D_WIN32_WINNT=${WIN32_VER} -DUNICODE)
+target_link_libraries(proxinjector PUBLIC protopuf proxinject_common)
+target_include_directories(proxinjector PUBLIC ${asio_SOURCE_DIR}/asio/include)
 
 file(GLOB INJECTOR_CLI_SRCS src/injector/injector_cli.cpp)
 
 add_executable(proxinjector-cli ${INJECTOR_CLI_SRCS})
 target_compile_features(proxinjector-cli PUBLIC cxx_std_20)
-target_link_libraries(proxinjector-cli PUBLIC protopuf argparse spdlog)
-target_include_directories(proxinjector-cli PUBLIC ${asio_SOURCE_DIR}/asio/include src/common)
-target_compile_definitions(proxinjector-cli PUBLIC -D_WIN32_WINNT=${WIN32_VER} -DUNICODE)
+target_link_libraries(proxinjector-cli PUBLIC protopuf argparse spdlog proxinject_common)
+target_include_directories(proxinjector-cli PUBLIC ${asio_SOURCE_DIR}/asio/include)

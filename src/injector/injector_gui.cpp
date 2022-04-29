@@ -20,6 +20,7 @@
 #include "server.hpp"
 #include "text_box.hpp"
 #include "utils.hpp"
+#include "version.hpp"
 
 void do_server(injector_server &server, ce::view &view,
                process_vector &process_vec, auto &...elements) {
@@ -42,7 +43,7 @@ int main(int argc, char *argv[]) {
   process_vector process_vec;
 
   ce::app app(argc, argv, "proxinject", "proxinject");
-  ce::window win(app.name());
+  ce::window win(app.name() + " " + proxinject_version);
   win.on_close = [&app]() { app.stop(); };
 
   ce::view view(win);

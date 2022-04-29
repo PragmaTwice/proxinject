@@ -16,33 +16,9 @@
 #ifndef PROXINJECT_INJECTOR_INJECTOR
 #define PROXINJECT_INJECTOR_INJECTOR
 
+#include "utils.hpp"
 #include "winraii.hpp"
 #include <filesystem>
-
-// utf8_encode/decode from cycfi::elements
-
-// Convert a wide Unicode string to an UTF8 string
-std::string utf8_encode(std::wstring const &wstr) {
-  if (wstr.empty())
-    return {};
-  int size = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(),
-                                 nullptr, 0, nullptr, nullptr);
-  std::string result(size, 0);
-  WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &result[0], size,
-                      nullptr, nullptr);
-  return result;
-}
-
-// Convert an UTF8 string to a wide Unicode String
-std::wstring utf8_decode(std::string const &str) {
-  if (str.empty())
-    return {};
-  int size =
-      MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), nullptr, 0);
-  std::wstring result(size, 0);
-  MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &result[0], size);
-  return result;
-}
 
 namespace fs = std::filesystem;
 

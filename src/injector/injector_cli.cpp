@@ -18,6 +18,7 @@
 #include "injector.hpp"
 #include "server.hpp"
 #include "utils.hpp"
+#include "version.hpp"
 #include <argparse/argparse.hpp>
 #include <iostream>
 #include <spdlog/fmt/ostr.h>
@@ -67,7 +68,7 @@ optional<pair<string, uint16_t>> parse_address(const string &addr) {
 }
 
 int main(int argc, char *argv[]) {
-  ArgumentParser parser("proxinjector-cli");
+  ArgumentParser parser("proxinjector-cli", proxinject_version);
 
   parser.add_argument("-i", "--pid")
       .help("pid of a process to inject proxy (integer)")

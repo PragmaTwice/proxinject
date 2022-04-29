@@ -57,9 +57,34 @@ static inline std::string trim_copy(std::string s) {
   return s;
 }
 
-static inline bool all_of_digit(const auto& v) {
+static inline bool all_of_digit(const auto &v) {
   return std::all_of(v.begin(), v.end(),
                      [](auto c) { return std::isdigit(c); });
+}
+
+// utf8_encode/decode from cycfi::elements
+
+// Convert a wide Unicode string to an UTF8 string
+std::string utf8_encode(std::wstring const &wstr) {
+  if (wstr.empty())
+    return {};
+  int size = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(),
+                                 nullptr, 0, nullptr, nullptr);
+  std::string result(size, 0);
+  WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &result[0], size,
+                      nullptr, nullptr);
+  return result;
+}
+
+// Convert an UTF8 string to a wide Unicode String
+std::wstring utf8_decode(std::string const &str) {
+  if (str.empty())
+    return {};
+  int size =
+      MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), nullptr, 0);
+  std::wstring result(size, 0);
+  MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &result[0], size);
+  return result;
 }
 
 #endif
