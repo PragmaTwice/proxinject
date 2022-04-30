@@ -79,7 +79,7 @@ execute_process(COMMAND git describe --tags
 	OUTPUT_VARIABLE PROXINJECT_VERSION)
 
 if(NOT GIT_DESCRIBE_EXITCODE EQUAL 0)
-	set(PROXINJECT_VERSION "")
+	message(FATAL_ERROR "error occurred while dumping version via `git describe`")
 endif()
 
 string(STRIP ${PROXINJECT_VERSION} PROXINJECT_VERSION)
