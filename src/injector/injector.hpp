@@ -61,6 +61,9 @@ struct injector {
                      std::wstring_view filename) {
     handle mapping =
         create_mapping(get_port_mapping_name(pid), sizeof(std::uint16_t));
+    if (!mapping) {
+      return false;
+    }
 
     mapped_buffer port_buf(mapping.get());
     *(std::uint16_t *)port_buf.get() = port;
@@ -78,6 +81,9 @@ struct injector {
 #else
         load_library;
 #endif
+    if (!current_load_library) {
+      return false;
+    }
 
     handle thread = CreateRemoteThread(
         proc, nullptr, 0, (LPTHREAD_START_ROUTINE)current_load_library,
