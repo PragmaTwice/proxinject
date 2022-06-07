@@ -20,22 +20,14 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
-
-    - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -A ${{ matrix.arch }}
-
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{ matrix.build_type }}
     
-    - name: Move dlls
-      run: |
-        mv ${{github.workspace}}\build\*.dll ${{github.workspace}}\build\${{ matrix.build_type }}
-        mv ${{github.workspace}}\build\resources ${{github.workspace}}\build\${{ matrix.build_type }}
-
+    - name: Build
+      run: .\build.ps1 -mode ${{ matrix.build_type }} -arch ${{ matrix.arch }}
+    
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.0.0
       with:
         name: build-${{ matrix.build_type }}-${{ matrix.arch }}
         path: |
-          ${{github.workspace}}\build\${{ matrix.build_type }}
-        retention-days: 7
+          ${{github.workspace}}\release
+        retention-days: 30

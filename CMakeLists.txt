@@ -17,6 +17,8 @@ cmake_minimum_required(VERSION 3.20)
 
 project(proxinject)
 
+option(PROXINJECTEE_ONLY "only build proxyinjectee" OFF)
+
 if(NOT WIN32)
 	message(FATAL_ERROR "support Windows only")
 endif()
@@ -47,13 +49,14 @@ FetchContent_Declare(spdlog
 	GIT_TAG v1.10.0
 )
 
-FetchContent_MakeAvailable(minhook protopuf argparse spdlog)
+FetchContent_MakeAvailable(minhook protopuf)
+if(NOT PROXINJECTEE_ONLY)
+	FetchContent_MakeAvailable(argparse spdlog)
+endif()
 
 FetchContent_Declare(asio
 	GIT_REPOSITORY https://github.com/chriskohlhoff/asio
 	GIT_TAG asio-1-22-1
-	CONFIGURE_COMMAND ""
-	BUILD_COMMAND ""
 )
 
 FetchContent_GetProperties(asio)
@@ -61,15 +64,17 @@ if(NOT asio_POPULATED)
   FetchContent_Populate(asio)
 endif()
 
-set(ELEMENTS_ASIO_INCLUDE_DIR ${asio_SOURCE_DIR}/asio/include CACHE STRING "")
-set(ELEMENTS_BUILD_EXAMPLES OFF CACHE BOOL "")
-FetchContent_Declare(elements
-	GIT_REPOSITORY https://github.com/PragmaTwice/elements
-	GIT_TAG b2a4b570a691c7461f7d09ea52a01cf9bb721c81
-	GIT_SUBMODULES_RECURSE ON
-)
+if(NOT PROXINJECTEE_ONLY)
+	set(ELEMENTS_ASIO_INCLUDE_DIR ${asio_SOURCE_DIR}/asio/include CACHE STRING "")
+	set(ELEMENTS_BUILD_EXAMPLES OFF CACHE BOOL "")
+	FetchContent_Declare(elements
+		GIT_REPOSITORY https://github.com/PragmaTwice/elements
+		GIT_TAG b2a4b570a691c7461f7d09ea52a01cf9bb721c81
+		GIT_SUBMODULES_RECURSE ON
+	)
 
-FetchContent_MakeAvailable(elements)
+	FetchContent_MakeAvailable(elements)
+endif()
 
 set(WIN32_VERSION 0x0A00)
 
@@ -96,22 +101,28 @@ target_compile_features(proxinjectee PUBLIC cxx_std_20)
 target_link_libraries(proxinjectee PUBLIC minhook ws2_32 protopuf proxinject_common)
 target_include_directories(proxinjectee PUBLIC ${asio_SOURCE_DIR}/asio/include)
 
-file(GLOB INJECTOR_GUI_SRCS src/injector/injector_gui.cpp src/injector/text_box.cpp)
+if(NOT PROXINJECTEE_ONLY)
+	file(GLOB INJECTOR_GUI_SRCS src/injector/injector_gui.cpp src/injector/text_box.cpp)
 
-set(ELEMENTS_APP_PROJECT proxinjector)
-set(ELEMENTS_APP_SOURCES ${INJECTOR_GUI_SRCS})
+	set(ELEMENTS_APP_PROJECT proxinjector)
+	set(ELEMENTS_APP_SOURCES ${INJECTOR_GUI_SRCS})
 
-set(ELEMENTS_ROOT ${elements_SOURCE_DIR})
-set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${ELEMENTS_ROOT}/cmake")
-include(ElementsConfigApp)
+	set(ELEMENTS_ROOT ${elements_SOURCE_DIR})
+	set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${ELEMENTS_ROOT}/cmake")
+	include(ElementsConfigApp)
 
-target_compile_features(proxinjector PUBLIC cxx_std_20)
-target_link_libraries(proxinjector PUBLIC protopuf proxinject_common)
-target_include_directories(proxinjector PUBLIC ${asio_SOURCE_DIR}/asio/include)
+	target_compile_features(proxinjector PUBLIC cxx_std_20)
+	target_link_libraries(proxinjector PUBLIC protopuf proxinject_common)
+	target_include_directories(proxinjector PUBLIC ${asio_SOURCE_DIR}/asio/include)
 
-file(GLOB INJECTOR_CLI_SRCS src/injector/injector_cli.cpp)
+	file(GLOB INJECTOR_CLI_SRCS src/injector/injector_cli.cpp)
 
-add_executable(proxinjector-cli ${INJECTOR_CLI_SRCS})
-target_compile_features(proxinjector-cli PUBLIC cxx_std_20)
-target_link_libraries(proxinjector-cli PUBLIC protopuf argparse spdlog proxinject_common)
-target_include_directories(proxinjector-cli PUBLIC ${asio_SOURCE_DIR}/asio/include)
+	add_executable(proxinjector-cli ${INJECTOR_CLI_SRCS})
+	target_compile_features(proxinjector-cli PUBLIC cxx_std_20)
+	target_link_libraries(proxinjector-cli PUBLIC protopuf argparse spdlog proxinject_common)
+	target_include_directories(proxinjector-cli PUBLIC ${asio_SOURCE_DIR}/asio/include)
+endif()
+
+if(PROXINJECTEE_ONLY)
+	add_executable(wow64-address-dumper src/wow64/address_dumper.cpp)
+endif()

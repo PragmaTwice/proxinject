@@ -17,10 +17,10 @@
 #define PROXINJECT_INJECTOR_INJECTOR_GUI
 
 #include "server.hpp"
+#include "text_box.hpp"
 #include "utils.hpp"
 #include <elements.hpp>
 #include <sstream>
-#include "text_box.hpp"
 
 namespace ce = cycfi::elements;
 
@@ -115,7 +115,7 @@ auto make_controls(injector_server &server, ce::view &view,
         return;
       }
 
-      if (!std::forward<F>(f)(res.value())) {
+      if (!std::forward<F>(f)(res->dwProcessId)) {
         return;
       }
     }

@@ -177,8 +177,8 @@ int main(int argc, char *argv[]) {
 
   for (const auto &file : create_paths) {
     if (auto res = injector::create_process(file, parser.get<bool>("-w"))) {
-      if (server.inject(*res)) {
-        report_injected(*res);
+      if (server.inject(res->dwProcessId)) {
+        report_injected(res->dwProcessId);
       }
     }
   }

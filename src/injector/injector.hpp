@@ -26,28 +26,62 @@ struct injector {
   static inline const FARPROC load_library =
       GetProcAddress(GetModuleHandleA("kernel32.dll"), "LoadLibraryW");
 
-  static bool inject(DWORD pid, std::uint16_t port,
-                     std::wstring_view filename) {
-    handle proc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-    if (!proc)
-      return false;
+  static inline const char wow64_address_dumper_filename[] =
+      "wow64-address-dumper.exe";
 
+  static std::optional<FARPROC> get_wow64_load_library() {
+    auto path = fs::path(get_current_filename())
+                    .replace_filename(wow64_address_dumper_filename);
+
+    if (!std::filesystem::exists(path)) {
+      return std::nullopt;
+    }
+
+    auto pi = create_process(path.wstring());
+    if (!pi) {
+      return std::nullopt;
+    }
+
+    WaitForSingleObject(pi->hProcess, INFINITE);
+
+    DWORD ec = 0;
+    if (!GetExitCodeProcess(pi->hProcess, &ec)) {
+      return std::nullopt;
+    }
+
+    return (FARPROC)ec;
+  }
+
+#if defined(_WIN64)
+  static inline const FARPROC load_library_wow64 =
+      get_wow64_load_library().value_or(nullptr);
+#endif
+
+  static bool inject(DWORD pid, HANDLE proc, std::uint16_t port, BOOL isWoW64,
+                     std::wstring_view filename) {
     handle mapping =
         create_mapping(get_port_mapping_name(pid), sizeof(std::uint16_t));
 
     mapped_buffer port_buf(mapping.get());
     *(std::uint16_t *)port_buf.get() = port;
 
-    virtual_memory mem(proc.get(), (filename.size() + 1) * sizeof(wchar_t));
+    virtual_memory mem(proc, (filename.size() + 1) * sizeof(wchar_t));
     if (!mem)
       return false;
 
     if (!mem.write(filename.data()))
       return false;
 
-    handle thread = CreateRemoteThread(proc.get(), nullptr, 0,
-                                       (LPTHREAD_START_ROUTINE)load_library,
-                                       mem.get(), 0, nullptr);
+    FARPROC current_load_library =
+#if defined(_WIN64)
+        isWoW64 ? load_library_wow64 : load_library;
+#else
+        load_library;
+#endif
+
+    handle thread = CreateRemoteThread(
+        proc, nullptr, 0, (LPTHREAD_START_ROUTINE)current_load_library,
+        mem.get(), 0, nullptr);
     if (!thread)
       return false;
 
@@ -57,10 +91,13 @@ struct injector {
   }
 
   static inline const char injectee_filename[] = "proxinjectee.dll";
+  static inline const char injectee_wow64_filename[] = "proxinjectee32.dll";
 
   static std::optional<std::wstring>
-  find_injectee(std::wstring_view self_binary_path) {
-    auto path = fs::path(self_binary_path).replace_filename(injectee_filename);
+  find_injectee(std::wstring_view self_binary_path, BOOL isWoW64) {
+    auto path = fs::path(self_binary_path)
+                    .replace_filename(isWoW64 ? injectee_wow64_filename
+                                              : injectee_filename);
 
     if (!std::filesystem::exists(path)) {
       return std::nullopt;
@@ -70,8 +107,19 @@ struct injector {
   }
 
   static bool inject(DWORD pid, std::uint16_t port) {
-    if (auto path = find_injectee(get_current_filename())) {
-      return inject(pid, port, path.value());
+    handle proc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+    if (!proc)
+      return false;
+
+    BOOL isWoW64 = false;
+#if defined(_WIN64)
+    if (!IsWow64Process(proc.get(), &isWoW64)) {
+      return false;
+    }
+#endif
+
+    if (auto path = find_injectee(get_current_filename(), isWoW64)) {
+      return inject(pid, proc.get(), port, isWoW64, path.value());
     }
 
     return false;
@@ -102,8 +150,8 @@ struct injector {
     return res_u8;
   }
 
-  static std::optional<DWORD> create_process(const std::wstring &command,
-                                             bool new_console = false) {
+  static std::optional<PROCESS_INFORMATION>
+  create_process(const std::wstring &command, bool new_console = false) {
     STARTUPINFO startup_info{};
     PROCESS_INFORMATION process_info{};
     if (CreateProcessW(nullptr, std::wstring{command}.data(), nullptr, nullptr,
@@ -112,11 +160,11 @@ struct injector {
       return std::nullopt;
     }
 
-    return process_info.dwProcessId;
+    return process_info;
   }
 
-  static std::optional<DWORD> create_process(const std::string &path,
-                                             bool new_console = false) {
+  static std::optional<PROCESS_INFORMATION>
+  create_process(const std::string &path, bool new_console = false) {
     auto wpath = utf8_decode(path);
     return create_process(wpath, new_console);
   }
