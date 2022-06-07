@@ -4,7 +4,29 @@
 
 *A socks5 proxy injection tool for **Windows**: just select some processes and make them proxy-able!*
 
-## development dependences
+## Preview
+
+### proxinject GUI
+
+![screenshot](./docs/screenshot.png)
+
+### proxinject CLI
+```
+$ ./proxinjector-cli -h
+Usage: proxinjector-cli [options]
+
+Optional arguments:
+-h --help                       shows help message and exits [default: false]
+-v --version                    prints version information and exits [default: false]
+-i --pid                        pid of a process to inject proxy (integer) [default: {}]
+-n --name                       filename of a process to inject proxy (string, without path and file ext, i.e. `python`) [default: {}]
+-e --exec                       command line started with an executable to create a new process and inject proxy (string, i.e. `python` or `C:\Program Files\a.exe --some-option`) [default: {}]
+-l --enable-log                 enable logging for network connections [default: false]
+-p --set-proxy                  set a proxy address for network connections (string, i.e. `127.0.0.1:1080`) [default: ""]
+-w --new-console-window         create a new console window while a new console process is executed in `-e` [default: false]
+```
+
+## Development Dependencies
 
 ### environments:
 
