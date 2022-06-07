@@ -1,4 +1,4 @@
-name: CMake
+name: Build
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
     - name: Build
       run: .\build.ps1 -mode ${{ matrix.build_type }} -arch ${{ matrix.arch }}
     
-    - name: Upload a Build Artifact
+    - name: Upload
       uses: actions/upload-artifact@v3.0.0
       with:
         name: build-${{ matrix.build_type }}-${{ matrix.arch }}
