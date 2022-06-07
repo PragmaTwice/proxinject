@@ -87,4 +87,10 @@ std::wstring utf8_decode(std::string const &str) {
   return result;
 }
 
+static inline const std::wstring port_mapping_name = L"PROXINJECT_PORT_IPC_";
+
+std::wstring get_port_mapping_name(DWORD pid) {
+  return port_mapping_name + std::to_wstring(pid);
+}
+
 #endif

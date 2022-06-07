@@ -14,8 +14,9 @@
 // limitations under the License.
 
 #include "hook.hpp"
+#include <utils.hpp>
 
-void do_client(HINSTANCE dll_handle) {
+void do_client(HINSTANCE dll_handle, std::uint16_t port) {
   {
     asio::io_context io_context(1);
 
@@ -26,12 +27,20 @@ void do_client(HINSTANCE dll_handle) {
     scope_ptr_bind queue_bind(queue, qu.get());
     scope_ptr_bind config_bind(config, cfg.get());
 
-    injectee_client c(io_context, proxinject_endpoint, *queue, *config);
+    injectee_client c(io_context, tcp::endpoint(localhost, port), *queue,
+                      *config);
     asio::co_spawn(io_context, c.start(), asio::detached);
 
     io_context.run();
   }
   FreeLibrary(dll_handle);
+}
+
+std::uint16_t get_port() {
+  handle mapping = open_mapping(get_port_mapping_name(GetCurrentProcessId()));
+
+  mapped_buffer port_buf(mapping.get());
+  return *(std::uint16_t *)port_buf.get();
 }
 
 BOOL WINAPI DllMain(HINSTANCE dll_handle, DWORD reason, LPVOID reserved) {
@@ -45,7 +54,7 @@ BOOL WINAPI DllMain(HINSTANCE dll_handle, DWORD reason, LPVOID reserved) {
     hook_WSAConnectByList::create();
 
     minhook::enable();
-    std::thread(do_client, dll_handle).detach();
+    std::thread(do_client, dll_handle, get_port()).detach();
     break;
 
   case DLL_PROCESS_DETACH:

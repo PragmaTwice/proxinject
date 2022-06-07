@@ -46,6 +46,9 @@ struct virtual_memory {
                                 MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE)),
         size_(size) {}
 
+  virtual_memory(const virtual_memory &) = delete;
+  virtual_memory(virtual_memory &&) = default;
+
   ~virtual_memory() {
     if (mem_addr) {
       VirtualFreeEx(proc_handle, mem_addr, 0, MEM_RELEASE);
@@ -121,5 +124,29 @@ template <typename F> void match_process(F &&f) {
     }
   }
 }
+
+handle create_mapping(const std::wstring &name, DWORD buf_size) {
+  return CreateFileMapping(INVALID_HANDLE_VALUE, // use paging file
+                           NULL,                 // default security
+                           PAGE_READWRITE,       // read/write access
+                           0,        // maximum object size (high-order DWORD)
+                           buf_size, // maximum object size (low-order DWORD)
+                           name.c_str()); // name of mapping object
+}
+
+handle open_mapping(const std::wstring &name) {
+  return OpenFileMapping(FILE_MAP_ALL_ACCESS, // read/write access
+                         FALSE,               // do not inherit the name
+                         name.c_str());       // name of mapping object
+}
+
+struct mapped_buffer : std::unique_ptr<void, static_function<UnmapViewOfFile>> {
+  using base_type = std::unique_ptr<void, static_function<UnmapViewOfFile>>;
+
+  mapped_buffer(HANDLE mapping, DWORD offset = 0, SIZE_T size = 0)
+      : base_type(MapViewOfFile(mapping,             // handle to map object
+                                FILE_MAP_ALL_ACCESS, // read/write permission
+                                0, offset, size)) {}
+};
 
 #endif

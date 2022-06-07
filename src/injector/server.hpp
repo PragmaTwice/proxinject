@@ -17,8 +17,8 @@
 #define PROXINJECT_INJECTOR_SERVER
 
 #include "async_io.hpp"
-#include "schema.hpp"
 #include "injector.hpp"
+#include "schema.hpp"
 #include <asio.hpp>
 #include <map>
 
@@ -39,11 +39,18 @@ struct injector_server {
   InjectorConfig config_;
   std::mutex config_mutex;
 
+  std::uint16_t port_ = -1;
+
+  void set_port(std::uint16_t port) { port_ = port; }
+
   bool inject(DWORD pid) {
+    if (port_ == -1) {
+      return false;
+    }
     if (clients.contains(pid)) {
       return false;
     } else {
-      return injector::inject(pid);
+      return injector::inject(pid, port_);
     }
   }
 

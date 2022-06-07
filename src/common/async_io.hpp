@@ -49,7 +49,8 @@ asio::awaitable<void> async_write_message(Stream &s, const Message &msg) {
   co_await asio::async_write(s, asio::buffer(buf, len), asio::use_awaitable);
 }
 
-static inline const auto proxinject_endpoint =
-    tcp::endpoint(ip::address::from_string("127.0.0.1"), 33321);
+static inline const auto localhost = ip::address::from_string("127.0.0.1");
+
+static inline const auto auto_endpoint = tcp::endpoint(localhost, 0);
 
 #endif

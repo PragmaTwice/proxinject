@@ -126,9 +126,12 @@ int main(int argc, char *argv[]) {
   asio::io_context io_context(1);
   injector_server server;
 
+  auto acceptor = tcp::acceptor(io_context, auto_endpoint);
+  server.set_port(acceptor.local_endpoint().port());
+  info("connection port is set to {}", server.port_);
+
   asio::co_spawn(io_context,
-                 listener<injectee_session_cli>(
-                     tcp::acceptor(io_context, proxinject_endpoint), server),
+                 listener<injectee_session_cli>(std::move(acceptor), server),
                  asio::detached);
 
   asio::signal_set signals(io_context, SIGINT, SIGTERM);

@@ -26,10 +26,12 @@ void do_server(injector_server &server, ce::view &view,
                process_vector &process_vec, auto &...elements) {
   asio::io_context io_context(1);
 
+  auto acceptor = tcp::acceptor(io_context, auto_endpoint);
+  server.set_port(acceptor.local_endpoint().port());
+
   asio::co_spawn(io_context,
-                 listener<injectee_session_ui>(
-                     tcp::acceptor(io_context, proxinject_endpoint), server,
-                     view, process_vec, elements...),
+                 listener<injectee_session_ui>(std::move(acceptor), server,
+                                               view, process_vec, elements...),
                  asio::detached);
 
   asio::signal_set signals(io_context, SIGINT, SIGTERM);

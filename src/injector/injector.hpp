@@ -26,10 +26,17 @@ struct injector {
   static inline const FARPROC load_library =
       GetProcAddress(GetModuleHandleA("kernel32.dll"), "LoadLibraryW");
 
-  static bool inject(DWORD pid, std::wstring_view filename) {
+  static bool inject(DWORD pid, std::uint16_t port,
+                     std::wstring_view filename) {
     handle proc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
     if (!proc)
       return false;
+
+    handle mapping =
+        create_mapping(get_port_mapping_name(pid), sizeof(std::uint16_t));
+
+    mapped_buffer port_buf(mapping.get());
+    *(std::uint16_t *)port_buf.get() = port;
 
     virtual_memory mem(proc.get(), (filename.size() + 1) * sizeof(wchar_t));
     if (!mem)
@@ -62,9 +69,9 @@ struct injector {
     return path.wstring();
   }
 
-  static bool inject(DWORD pid) {
+  static bool inject(DWORD pid, std::uint16_t port) {
     if (auto path = find_injectee(get_current_filename())) {
-      return inject(pid, path.value());
+      return inject(pid, port, path.value());
     }
 
     return false;
