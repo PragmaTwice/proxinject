@@ -41,3 +41,5 @@ if($arch -eq "x64") {
 	cp $build_dir/Win32/$mode/proxinjectee.dll $release_dir/proxinjectee32.dll -Force
 	cp $build_dir/Win32/$mode/wow64-address-dumper.exe $release_dir -Force
 }
+
+cp LICENSE $release_dir -Recurse -Force
