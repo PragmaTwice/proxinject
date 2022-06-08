@@ -30,7 +30,20 @@ jobs:
     - name: Upload
       uses: actions/upload-artifact@v3.0.0
       with:
-        name: build-${{ matrix.build_type }}-${{ matrix.arch }}
+        name: proxinject-snapshot-${{ github.sha }}-${{ matrix.build_type }}-${{ matrix.arch }}
         path: |
           ${{github.workspace}}\release
+        retention-days: 30
+    
+    - name: Pack
+      run: makensis /DVERSION=$(git describe --tags) .\setup.nsi
+      if: ${{ matrix.build_type == 'Release' }}
+    
+    - name: Upload Package
+      if: ${{ matrix.build_type == 'Release' }}
+      uses: actions/upload-artifact@v3.0.0
+      with:
+        name: proxinject-snapshot-${{ github.sha }}-${{ matrix.arch }}-installer
+        path: |
+          ${{github.workspace}}\proxinjectSetup.exe
         retention-days: 30
