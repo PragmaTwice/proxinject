@@ -68,7 +68,7 @@ SectionEnd
 Section "Start Menu Shortcut" StartShort
     CreateDirectory "$SMPROGRAMS\${NAME}"
     CreateShortCut "$SMPROGRAMS\${NAME}\${NAME}.lnk" "$INSTDIR\${APPFILE}"
-    CreateShortCut "$SMPROGRAMS\${NAME}\uninstall ${NAME}.lnk" "$INSTDIR\uninstall.exe"
+    CreateShortCut "$SMPROGRAMS\${NAME}\Uninstall ${NAME}.lnk" "$INSTDIR\uninstall.exe"
 SectionEnd
 
 ;--------------------------------
