@@ -68,7 +68,27 @@ optional<pair<string, uint16_t>> parse_address(const string &addr) {
 }
 
 int main(int argc, char *argv[]) {
-  ArgumentParser parser("proxinjector-cli", proxinject_version);
+  ArgumentParser parser("proxinjector-cli", proxinject_version,
+                        argparse::default_arguments::help);
+
+  parser.add_description(
+      "A socks5 proxy injection tool for Windows: just select some processes "
+      "and make them proxy-able!\nPlease visit "
+      "https://github.com/PragmaTwice/proxinject for more information.");
+
+  parser.add_argument("-v", "--version")
+      .action([&](const auto & /*unused*/) {
+        std::cout << "proxinject " << proxinject_version << std::endl;
+        std::cout << std::endl;
+        std::cout << "Copyright (c) PragmaTwice" << std::endl;
+        std::cout << "Licensed under the Apache License, Version 2.0"
+                  << std::endl;
+        std::exit(0);
+      })
+      .default_value(false)
+      .help("prints version information and exits")
+      .implicit_value(true)
+      .nargs(0);
 
   parser.add_argument("-i", "--pid")
       .help("pid of a process to inject proxy (integer)")
