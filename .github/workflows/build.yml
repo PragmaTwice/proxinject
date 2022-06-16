@@ -26,24 +26,45 @@ jobs:
     
     - name: Build
       run: .\build.ps1 -mode ${{ matrix.build_type }} -arch ${{ matrix.arch }}
+
+    - name: Set variables
+      run: |
+        echo "PROXINJECT_VERSION=$(git describe --tags)" >> $Env:GITHUB_ENV
+        echo "SHORT_SHA='${{ github.sha }}'.Substring(0,7)" >> $Env:GITHUB_ENV
     
     - name: Upload
       uses: actions/upload-artifact@v3.0.0
       with:
-        name: proxinject-snapshot-${{ github.sha }}-${{ matrix.build_type }}-${{ matrix.arch }}
+        name: proxinject-snapshot-${{ env.SHORT_SHA }}-${{ matrix.build_type }}-${{ matrix.arch }}
         path: |
           ${{github.workspace}}\release
         retention-days: 30
     
     - name: Pack
-      run: makensis /DVERSION=$(git describe --tags) .\setup.nsi
+      run: |
+        makensis /DVERSION=${{ env.PROXINJECT_VERSION }} .\setup.nsi
       if: ${{ matrix.build_type == 'Release' }}
     
     - name: Upload Package
       if: ${{ matrix.build_type == 'Release' }}
       uses: actions/upload-artifact@v3.0.0
       with:
-        name: proxinject-snapshot-${{ github.sha }}-${{ matrix.arch }}-installer
+        name: proxinject-snapshot-${{ env.SHORT_SHA }}-${{ matrix.arch }}-installer
         path: |
           ${{github.workspace}}\proxinjectSetup.exe
         retention-days: 30
+    
+    - name: Rename for Release
+      if: ${{ startsWith(github.ref, 'refs/tags/v') && matrix.build_type == 'Release' }}
+      run: |
+        mv proxinjectSetup.exe proxinjectSetup-${{ env.PROXINJECT_VERSION }}-${{ matrix.arch }}.exe
+        Compress-Archive release proxinject-${{ env.PROXINJECT_VERSION }}-${{ matrix.arch }}.zip
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: ${{ startsWith(github.ref, 'refs/tags/v') && matrix.build_type == 'Release' && matrix.arch == 'x64' }}
+      with:
+        prerelease: true
+        files: |
+          proxinjectSetup*.exe
+          proxinject*.zip
