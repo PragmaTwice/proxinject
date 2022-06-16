@@ -30,7 +30,7 @@ jobs:
     - name: Set variables
       run: |
         echo "PROXINJECT_VERSION=$(git describe --tags)" >> $Env:GITHUB_ENV
-        echo "SHORT_SHA='${{ github.sha }}'.Substring(0,7)" >> $Env:GITHUB_ENV
+        echo "SHORT_SHA=$('${{ github.sha }}'.Substring(0,7))" >> $Env:GITHUB_ENV
     
     - name: Upload
       uses: actions/upload-artifact@v3.0.0
