@@ -20,19 +20,20 @@
 #include "minhook.hpp"
 #include "socks5.hpp"
 #include "winnet.hpp"
+#include <protopuf/fixed_string.h>
 #include <string>
 
 inline blocking_queue<InjecteeMessage> *queue = nullptr;
 inline injectee_config *config = nullptr;
 
-template <auto F> struct hook_connect_fn : minhook::api<F, hook_connect_fn<F>> {
-  using base = minhook::api<F, hook_connect_fn<F>>;
+template <auto F, pp::basic_fixed_string N>
+struct hook_connect_fn : minhook::api<F, hook_connect_fn<F, N>> {
+  using base = minhook::api<F, hook_connect_fn<F, N>>;
 
   template <typename... T>
   static int WSAAPI detour(SOCKET s, const sockaddr *name, int namelen,
                            T... args) {
-    if ((name->sa_family == AF_INET || name->sa_family == AF_INET6) && config &&
-        !is_localhost(name)) {
+    if (is_inet(name) && config && !is_localhost(name)) {
       auto cfg = config->get();
       if (auto v = to_ip_addr(name)) {
 
@@ -40,7 +41,7 @@ template <auto F> struct hook_connect_fn : minhook::api<F, hook_connect_fn<F>> {
         auto log = cfg["log"_f];
         if (queue && log && log.value()) {
           queue->push(create_message<InjecteeMessage, "connect">(
-              InjecteeConnect{(std::uint32_t)s, *v, proxy}));
+              InjecteeConnect{(std::uint32_t)s, *v, proxy, N}));
         }
 
         if (proxy) {
@@ -64,8 +65,8 @@ template <auto F> struct hook_connect_fn : minhook::api<F, hook_connect_fn<F>> {
   }
 };
 
-struct hook_connect : hook_connect_fn<connect> {};
-struct hook_WSAConnect : hook_connect_fn<WSAConnect> {};
+struct hook_connect : hook_connect_fn<connect, "connect"> {};
+struct hook_WSAConnect : hook_connect_fn<WSAConnect, "WSAConnect"> {};
 
 struct hook_WSAConnectByList
     : minhook::api<WSAConnectByList, hook_WSAConnectByList> {
@@ -74,6 +75,23 @@ struct hook_WSAConnectByList
                             LPDWORD RemoteAddressLength,
                             LPSOCKADDR RemoteAddress, const timeval *timeout,
                             LPWSAOVERLAPPED Reserved) {
+    for (size_t i = 0; i < SocketAddress->iAddressCount; ++i) {
+      LPSOCKADDR name = SocketAddress->Address[i].lpSockaddr;
+
+      if (is_inet(name) && config && !is_localhost(name)) {
+        auto cfg = config->get();
+        if (auto v = to_ip_addr(name)) {
+
+          auto proxy = cfg["addr"_f];
+          auto log = cfg["log"_f];
+          if (queue && log && log.value()) {
+            queue->push(create_message<InjecteeMessage, "connect">(
+                InjecteeConnect{(std::uint32_t)s, *v, proxy, "WSAConnectByList"}));
+          }
+        }
+      }
+    }
+
     return original(s, SocketAddress, LocalAddressLength, LocalAddress,
                     RemoteAddressLength, RemoteAddress, timeout, Reserved);
   }

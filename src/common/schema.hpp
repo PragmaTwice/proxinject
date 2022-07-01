@@ -44,15 +44,14 @@ inline IpAddr from_asio(const ip::address &addr, std::uint16_t port) {
   }
 }
 
-template <typename OS>
-OS &operator<<(OS &stream, const IpAddr &addr) {
+template <typename OS> OS &operator<<(OS &stream, const IpAddr &addr) {
   auto [address, port] = to_asio(addr);
   return stream << address << ":" << port;
 }
 
-using InjecteeConnect = pp::message<pp::uint32_field<"handle", 1>,
-                                    pp::message_field<"addr", 2, IpAddr>,
-                                    pp::message_field<"proxy", 3, IpAddr>>;
+using InjecteeConnect = pp::message<
+    pp::uint32_field<"handle", 1>, pp::message_field<"addr", 2, IpAddr>,
+    pp::message_field<"proxy", 3, IpAddr>, pp::string_field<"syscall", 4>>;
 
 using InjecteeMessage =
     pp::message<pp::string_field<"opcode", 1>,

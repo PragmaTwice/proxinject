@@ -33,9 +33,10 @@ struct injectee_session_cli : injectee_session {
 
   asio::awaitable<void> process_connect(const InjecteeConnect &msg) override {
     if (auto v = msg["proxy"_f])
-      info("{}: connect {} via {}", (int)pid_, *msg["addr"_f], *v);
+      info("{}: {} {} via {}", (int)pid_, *msg["syscall"_f], *msg["addr"_f],
+           *v);
     else
-      info("{}: connect {}", (int)pid_, *msg["addr"_f]);
+      info("{}: {} {}", (int)pid_, *msg["syscall"_f], *msg["addr"_f]);
     co_return;
   }
 
@@ -51,6 +52,8 @@ struct injectee_session_cli : injectee_session {
 
       auto exec = socket_.get_executor();
       exec.target<asio::io_context>()->stop();
+
+      ExitThread(0);
     }
   }
 };

@@ -74,6 +74,10 @@ bool is_localhost(const sockaddr *name) {
   return false;
 }
 
+bool is_inet(const sockaddr *name) {
+  return name->sa_family == AF_INET || name->sa_family == AF_INET6;
+}
+
 bool sockequal(const sockaddr *l, const sockaddr *r) {
   if (l->sa_family == r->sa_family) {
     if (l->sa_family == AF_INET) {

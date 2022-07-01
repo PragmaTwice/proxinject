@@ -47,12 +47,15 @@ struct injectee_session_ui : injectee_session {
 
   asio::awaitable<void> process_connect(const InjecteeConnect &msg) override {
     std::stringstream stream;
-    stream << (int)pid_ << ": connect " << msg["addr"_f].value();
+
+    stream << (int)pid_ << ": " << *msg["syscall"_f] << " " << *msg["addr"_f];
     if (auto v = msg["proxy"_f])
       stream << " via " << *v;
     stream << "\n";
+
     log_.set_text(log_.get_text() + stream.str());
     view_.refresh();
+
     co_return;
   }
 
