@@ -93,4 +93,14 @@ std::wstring get_port_mapping_name(DWORD pid) {
   return port_mapping_name + std::to_wstring(pid);
 }
 
+std::string proxinject_copyright(const std::string &version) {
+  return "proxinject " + version + "\n\n" + "Copyright (c) PragmaTwice\n" +
+         "Licensed under the Apache License, Version 2.0";
+}
+
+std::string proxinject_description =
+    "A socks5 proxy injection tool for Windows: just select some processes "
+    "and make them proxy-able!\nPlease visit "
+    "https://github.com/PragmaTwice/proxinject for more information.";
+
 #endif

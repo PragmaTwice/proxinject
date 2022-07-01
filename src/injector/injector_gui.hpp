@@ -19,6 +19,7 @@
 #include "server.hpp"
 #include "text_box.hpp"
 #include "utils.hpp"
+#include "version.hpp"
 #include <elements.hpp>
 #include <sstream>
 
@@ -29,6 +30,7 @@ auto constexpr bg_color = ce::rgba(35, 35, 37, 255);
 constexpr auto bred = ce::colors::red.opacity(0.4);
 constexpr auto bblue = ce::colors::blue.opacity(0.4);
 constexpr auto brblue = ce::colors::royal_blue.opacity(0.4);
+constexpr auto bcblue = ce::colors::cornflower_blue.opacity(0.4);
 
 using process_vector = std::vector<std::pair<DWORD, std::string>>;
 
@@ -170,6 +172,12 @@ auto make_controls(injector_server &server, ce::view &view,
 
   auto log_box = share(selectable_text_box(""));
 
+  auto info_button = icon_button(icons::info, 1.2, bcblue);
+  info_button.on_click = [&view](bool) {
+    view.add(message_box1(view, proxinject_copyright(proxinject_version),
+                          icons::info, [] {}));
+  };
+
   // clang-format off
   return std::make_tuple(
       margin({10, 10, 10, 10},
@@ -196,7 +204,8 @@ auto make_controls(injector_server &server, ce::view &view,
                   hmin_size(100, addr_input),
                   left_margin(5, hsize(100, port_input)),
                   left_margin(10, hold(proxy_toggle)),
-                  left_margin(5, log_toggle)
+                  left_margin(5, log_toggle),
+                  left_margin(8, info_button)
                 ),
                 top_margin(10,
                   vmin_size(250, 
