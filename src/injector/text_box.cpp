@@ -23,14 +23,28 @@ selectable_text_box::selectable_text_box(std::string text, font font_,
                                          float size)
     : static_text_box(std::move(text), font_, size), _select_start(-1),
       _select_end(-1), _current_x(0), _is_focus(false), _show_caret(true),
-      _caret_started(false) {}
+      _caret_started(false), _draw_mutex(new std::mutex{}) {}
 
 selectable_text_box::~selectable_text_box() {}
 
 void selectable_text_box::draw(context const &ctx) {
+  std::unique_lock lock(*_draw_mutex);
+
   draw_selection(ctx);
   static_text_box::draw(ctx);
   draw_caret(ctx);
+}
+
+view_limits selectable_text_box::limits(basic_context const &ctx) const {
+  std::unique_lock lock(*_draw_mutex);
+
+  return static_text_box::limits(ctx);
+}
+
+void selectable_text_box::layout(context const &ctx) {
+  std::unique_lock lock(*_draw_mutex);
+
+  static_text_box::layout(ctx);
 }
 
 bool selectable_text_box::click(context const &ctx, mouse_button btn) {
@@ -159,6 +173,8 @@ bool selectable_text_box::text(context const &ctx, text_info info_) {
 }
 
 void selectable_text_box::set_text(string_view text_) {
+  std::unique_lock lock(*_draw_mutex);
+
   static_text_box::set_text(text_);
   _select_start = std::min<int>(_select_start, text_.size());
   _select_end = std::min<int>(_select_end, text_.size());

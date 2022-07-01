@@ -36,6 +36,8 @@ public:
   void begin_focus() override;
   void end_focus() override;
   bool wants_control() const override;
+  void layout(context const &ctx) override;
+  view_limits limits(basic_context const &ctx) const override;
 
   bool text(context const &ctx, text_info info) override;
   void set_text(string_view text) override;
@@ -85,6 +87,8 @@ private:
   bool _is_focus : 1;
   bool _show_caret : 1;
   bool _caret_started : 1;
+
+  std::unique_ptr<std::mutex> _draw_mutex;
 };
 
 } // namespace cycfi::elements
