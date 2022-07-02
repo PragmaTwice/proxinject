@@ -27,6 +27,11 @@ Optional arguments:
 -w --new-console-window         create a new console window while a new console process is executed in `-e` [default: false]
 ```
 
+## How to Install
+
+- Download the latest portable archive (`.zip`) or installer (`.exe`) from the [Releases Page](https://github.com/PragmaTwice/proxinject/releases), or
+- Type `winget install PragmaTwice.proxinject` in the terminal ([winget](https://github.com/microsoft/winget-cli) is required)
+
 ## Development Dependencies
 
 ### environments:
