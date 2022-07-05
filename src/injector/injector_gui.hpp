@@ -102,13 +102,20 @@ auto make_tip_below_r(T &&element, const std::string &tip) {
   return res;
 }
 
+std::map<std::string_view, std::string_view> input_tip_text{
+    {"pid", "process ID"}, {"name", "process name"}, {"exec", "command line"}};
+
 auto make_controls(injector_server &server, ce::view &view,
                    process_vector &process_vec) {
   using namespace ce;
 
-  auto [process_input, process_input_ptr] = input_box();
-  auto [input_select, input_select_ptr] =
-      selection_menu([](auto &&) {}, {"pid", "name", "exec"});
+  auto [process_input, process_input_ptr] =
+      input_box(std::string(input_tip_text["pid"]));
+  auto [input_select, input_select_ptr] = selection_menu(
+      [process_input_ptr](auto str) {
+        process_input_ptr->_placeholder = input_tip_text[str];
+      },
+      {"pid", "name", "exec"});
 
   auto inject_click = [input_select_ptr, process_input_ptr]<typename F>(F &&f) {
     auto text = trim_copy(process_input_ptr->get_text());
@@ -166,7 +173,7 @@ auto make_controls(injector_server &server, ce::view &view,
         return share(align_center(label("unknown")));
       })));
 
-  auto [addr_input, addr_input_ptr] = input_box("ip address");
+  auto [addr_input, addr_input_ptr] = input_box("IP address");
   auto [port_input, port_input_ptr] = input_box("port");
 
   auto proxy_toggle = share(toggle_icon_button(icons::power, 1.2, brblue));

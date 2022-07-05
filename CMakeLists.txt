@@ -36,7 +36,7 @@ FetchContent_Declare(minhook
 set(BUILD_TESTS OFF CACHE BOOL "")
 FetchContent_Declare(protopuf
 	GIT_REPOSITORY https://github.com/PragmaTwice/protopuf
-	GIT_TAG 6b795c2cafef4cdf85854158a25356c6055ab635
+	GIT_TAG v2.2.0
 )
 
 FetchContent_Declare(argparse
@@ -69,7 +69,7 @@ if(NOT PROXINJECTEE_ONLY)
 	set(ELEMENTS_BUILD_EXAMPLES OFF CACHE BOOL "")
 	FetchContent_Declare(elements
 		GIT_REPOSITORY https://github.com/PragmaTwice/elements
-		GIT_TAG b2a4b570a691c7461f7d09ea52a01cf9bb721c81
+		GIT_TAG 0d603d169702428a2fa23c757e141da2cd7d228c
 		GIT_SUBMODULES_RECURSE ON
 	)
 
