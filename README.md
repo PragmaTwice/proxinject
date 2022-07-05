@@ -1,3 +1,5 @@
+<img src="resources/proxinject.png" width="128" alt="logo">
+
 # proxinject
 [![Build](https://github.com/PragmaTwice/proxinject/actions/workflows/build.yml/badge.svg)](https://github.com/PragmaTwice/proxinject/actions/workflows/build.yml)
 [![Release](https://shields.io/github/v/release/PragmaTwice/proxinject?display_name=tag&include_prereleases)](https://github.com/PragmaTwice/proxinject/releases)
