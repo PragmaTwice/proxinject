@@ -13,6 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/*=============================================================================
+   Copyright (c) 2016-2020 Joel de Guzman
+
+   Distributed under the MIT License [ https://opensource.org/licenses/MIT ]
+=============================================================================*/
+
 #include "text_box.hpp"
 
 namespace cycfi::elements {

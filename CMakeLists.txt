@@ -102,7 +102,7 @@ target_link_libraries(proxinjectee PUBLIC minhook ws2_32 protopuf proxinject_com
 target_include_directories(proxinjectee PUBLIC ${asio_SOURCE_DIR}/asio/include)
 
 if(NOT PROXINJECTEE_ONLY)
-	file(GLOB INJECTOR_GUI_SRCS src/injector/injector_gui.cpp src/injector/text_box.cpp)
+	file(GLOB INJECTOR_GUI_SRCS src/injector/injector_gui.cpp src/injector/ui_elements/*.cpp)
 
 	set(ELEMENTS_APP_PROJECT proxinjector)
 	set(ELEMENTS_APP_SOURCES ${INJECTOR_GUI_SRCS})

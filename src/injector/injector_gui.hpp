@@ -17,7 +17,8 @@
 #define PROXINJECT_INJECTOR_INJECTOR_GUI
 
 #include "server.hpp"
-#include "text_box.hpp"
+#include "ui_elements/text_box.hpp"
+#include "ui_elements/tooltip.hpp"
 #include "utils.hpp"
 #include "version.hpp"
 #include <elements.hpp>
@@ -83,6 +84,23 @@ struct injectee_session_ui : injectee_session {
     view_.refresh();
   }
 };
+
+template <typename T> auto make_tip_below(T &&element, const std::string &tip) {
+  return ce::tooltip_below(
+      std::forward<T>(element),
+      ce::layer(ce::margin({20, 8, 20, 8}, ce::label(tip)), ce::panel{}));
+}
+
+template <typename T>
+auto make_tip_below_r(T &&element, const std::string &tip) {
+  auto res = make_tip_below(std::forward<T>(element), tip);
+
+  res.location = [](const ce::rect &wh, const ce::rect &ctx) {
+    return wh.move_to(ctx.right - wh.right, ctx.bottom);
+  };
+
+  return res;
+}
 
 auto make_controls(injector_server &server, ce::view &view,
                    process_vector &process_vec) {
@@ -187,8 +205,8 @@ auto make_controls(injector_server &server, ce::view &view,
               htile(
                 hsize(80, input_select),
                 left_margin(5, hmin_size(100, process_input)),
-                left_margin(10, inject_button), 
-                left_margin(5, remove_button)
+                left_margin(10, make_tip_below(inject_button, "add specific processes to inject")), 
+                left_margin(5, make_tip_below(remove_button, "remove specific processes from injecting"))
               ),
               top_margin(10, 
                 vmin_size(250, 
@@ -203,9 +221,9 @@ auto make_controls(injector_server &server, ce::view &view,
                 htile(
                   hmin_size(100, addr_input),
                   left_margin(5, hsize(100, port_input)),
-                  left_margin(10, hold(proxy_toggle)),
-                  left_margin(5, log_toggle),
-                  left_margin(8, info_button)
+                  left_margin(10, make_tip_below_r(hold(proxy_toggle), "enable/disable proxy injection")),
+                  left_margin(5, make_tip_below_r(log_toggle, "enable/disable connection log")),
+                  left_margin(8, make_tip_below_r(info_button, "software information"))
                 ),
                 top_margin(10,
                   vmin_size(250, 
