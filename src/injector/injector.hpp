@@ -37,7 +37,7 @@ struct injector {
       return std::nullopt;
     }
 
-    auto pi = create_process(path.wstring());
+    auto pi = create_process(path.wstring(), CREATE_NO_WINDOW);
     if (!pi) {
       return std::nullopt;
     }
@@ -157,12 +157,12 @@ struct injector {
   }
 
   static std::optional<PROCESS_INFORMATION>
-  create_process(const std::wstring &command, bool new_console = false) {
+  create_process(const std::wstring &command, DWORD creation_flags = 0) {
     STARTUPINFO startup_info{};
     PROCESS_INFORMATION process_info{};
     if (CreateProcessW(nullptr, std::wstring{command}.data(), nullptr, nullptr,
-                       false, new_console ? CREATE_NEW_CONSOLE : 0, nullptr,
-                       nullptr, &startup_info, &process_info) == 0) {
+                       false, creation_flags, nullptr, nullptr, &startup_info,
+                       &process_info) == 0) {
       return std::nullopt;
     }
 
@@ -170,9 +170,9 @@ struct injector {
   }
 
   static std::optional<PROCESS_INFORMATION>
-  create_process(const std::string &path, bool new_console = false) {
+  create_process(const std::string &path, DWORD creation_flags = 0) {
     auto wpath = utf8_decode(path);
-    return create_process(wpath, new_console);
+    return create_process(wpath, creation_flags);
   }
 };
 

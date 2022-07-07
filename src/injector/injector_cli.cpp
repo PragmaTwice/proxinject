@@ -192,7 +192,8 @@ int main(int argc, char *argv[]) {
   }
 
   for (const auto &file : create_paths) {
-    if (auto res = injector::create_process(file, parser.get<bool>("-w"))) {
+    DWORD creation_flags = parser.get<bool>("-w") ? CREATE_NEW_CONSOLE : 0;
+    if (auto res = injector::create_process(file, creation_flags)) {
       if (server.inject(res->dwProcessId)) {
         report_injected(res->dwProcessId);
       }
