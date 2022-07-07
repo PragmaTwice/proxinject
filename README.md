@@ -38,7 +38,7 @@ Optional arguments:
 
 ### environments:
 
-- C++ compiler (with C++20 support)
+- C++ compiler (with C++20 support, currently MSVC)
 - Windows SDK (with winsock2 support)
 
 ### libraries: 
