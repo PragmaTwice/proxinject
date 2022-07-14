@@ -195,7 +195,7 @@ auto make_controls(injector_server &server, ce::view &view,
   auto log_toggle = toggle_icon_button(icons::doc, 1.2, brblue);
   log_toggle.on_click = [&server](bool on) { server.enable_log(on); };
 
-  auto subprocess_toggle = toggle_icon_button(icons::fast_forward, 1.2, brblue);
+  auto subprocess_toggle = toggle_icon_button(icons::record, 1.2, brblue);
   subprocess_toggle.on_click = [&server](bool on) {
     server.enable_subprocess(on);
   };
