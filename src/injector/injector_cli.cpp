@@ -20,6 +20,7 @@
 #include "utils.hpp"
 #include "version.hpp"
 #include <argparse/argparse.hpp>
+#include <csignal>
 #include <iostream>
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/spdlog.h>
@@ -45,15 +46,19 @@ struct injectee_session_cli : injectee_session {
     co_return;
   }
 
+  asio::awaitable<void> process_subpid(std::uint16_t pid,
+                                       bool result) override {
+    info("{}: subprocess {} created, {}", (int)pid_, (int)pid,
+         result ? "successful injecting" : "failed to inject");
+    co_return;
+  }
+
   void process_close() override {
     info("{}: closed", (int)pid_);
     if (server_.clients.size() == 0) {
-      info("all process have been exited, exit");
+      info("all processes have been exited, exit");
 
-      auto exec = socket_.get_executor();
-      exec.target<asio::io_context>()->stop();
-
-      ExitThread(0);
+      exit(0);
     }
   }
 };
@@ -121,6 +126,11 @@ int main(int argc, char *argv[]) {
       .default_value(false)
       .implicit_value(true);
 
+  parser.add_argument("-s", "--subprocess")
+      .help("inject subprocesses created by these already injected processes")
+      .default_value(false)
+      .implicit_value(true);
+
   try {
     parser.parse_args(argc, argv);
   } catch (const runtime_error &err) {
@@ -150,14 +160,16 @@ int main(int argc, char *argv[]) {
                  listener<injectee_session_cli>(std::move(acceptor), server),
                  asio::detached);
 
-  asio::signal_set signals(io_context, SIGINT, SIGTERM);
-  signals.async_wait([&](auto, auto) { io_context.stop(); });
-
-  thread io_thread([&io_context] { io_context.run(); });
+  jthread io_thread([&io_context] { io_context.run(); });
 
   if (parser.get<bool>("-l")) {
     server.enable_log();
     info("logging enabled");
+  }
+
+  if (parser.get<bool>("-s")) {
+    server.enable_subprocess();
+    info("subprocess injection enabled");
   }
 
   if (auto proxy_str = trim_copy(parser.get<string>("-p"));

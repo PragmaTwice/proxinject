@@ -195,6 +195,11 @@ auto make_controls(injector_server &server, ce::view &view,
   auto log_toggle = toggle_icon_button(icons::doc, 1.2, brblue);
   log_toggle.on_click = [&server](bool on) { server.enable_log(on); };
 
+  auto subprocess_toggle = toggle_icon_button(icons::fast_forward, 1.2, brblue);
+  subprocess_toggle.on_click = [&server](bool on) {
+    server.enable_subprocess(on);
+  };
+
   auto log_box = share(selectable_text_box(""));
 
   auto info_button = icon_button(icons::info, 1.2, bcblue);
@@ -230,6 +235,7 @@ auto make_controls(injector_server &server, ce::view &view,
                   left_margin(5, hsize(100, port_input)),
                   left_margin(10, make_tip_below_r(hold(proxy_toggle), "enable/disable proxy injection")),
                   left_margin(5, make_tip_below_r(log_toggle, "enable/disable connection log")),
+                  left_margin(5, make_tip_below_r(subprocess_toggle, "enable/disable subprocess injection")),
                   left_margin(8, make_tip_below_r(info_button, "software information"))
                 ),
                 top_margin(10,

@@ -167,8 +167,8 @@ template <auto F, pp::basic_fixed_string N>
 struct hook_WSAConnectByName : minhook::api<F, hook_WSAConnectByName<F, N>> {
   using base = minhook::api<F, hook_WSAConnectByName<F, N>>;
 
-  template <typename LPSTR>
-  static BOOL PASCAL detour(SOCKET s, LPSTR nodename, LPSTR servicename,
+  template <typename Char>
+  static BOOL PASCAL detour(SOCKET s, Char *nodename, Char *servicename,
                             LPDWORD LocalAddressLength, LPSOCKADDR LocalAddress,
                             LPDWORD RemoteAddressLength,
                             LPSOCKADDR RemoteAddress,
@@ -198,6 +198,52 @@ struct hook_WSAConnectByNameA
 struct hook_WSAConnectByNameW
     : hook_WSAConnectByName<WSAConnectByNameW, "WSAConnectByNameW"> {};
 
+template <typename Char> struct startup_info_ptr_impl;
+
+template <>
+struct startup_info_ptr_impl<char> : std::type_identity<LPSTARTUPINFOA> {};
+
+template <>
+struct startup_info_ptr_impl<wchar_t> : std::type_identity<LPSTARTUPINFOW> {};
+
+template <typename Char>
+using startup_info_ptr = typename startup_info_ptr_impl<Char>::type;
+
+template <auto F>
+struct hook_CreateProcess : minhook::api<F, hook_CreateProcess<F>> {
+  using base = minhook::api<F, hook_CreateProcess<F>>;
+
+  template <typename Char>
+  static BOOL WINAPI detour(const Char *lpApplicationName, Char *lpCommandLine,
+                            LPSECURITY_ATTRIBUTES lpProcessAttributes,
+                            LPSECURITY_ATTRIBUTES lpThreadAttributes,
+                            BOOL bInheritHandles, DWORD dwCreationFlags,
+                            LPVOID lpEnvironment,
+                            const Char *lpCurrentDirectory,
+                            startup_info_ptr<Char> lpStartupInfo,
+                            LPPROCESS_INFORMATION lpProcessInformation) {
+    BOOL res = base::original(
+        lpApplicationName, lpCommandLine, lpProcessAttributes,
+        lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment,
+        lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
+
+    if (res && config) {
+      auto cfg = config->get();
+      auto subprocess = cfg["subprocess"_f];
+
+      if (queue && subprocess && subprocess.value()) {
+        queue->push(create_message<InjecteeMessage, "subpid">(
+            lpProcessInformation->dwProcessId));
+      }
+    }
+
+    return res;
+  }
+};
+
+struct hook_CreateProcessA : hook_CreateProcess<CreateProcessA> {};
+struct hook_CreateProcessW : hook_CreateProcess<CreateProcessW> {};
+
 template <typename T, typename... Ts> minhook::status create_hooks() {
   if (auto status = T::create(); status.error()) {
     return status;
@@ -212,7 +258,8 @@ template <typename T, typename... Ts> minhook::status create_hooks() {
 
 inline minhook::status hook_create_all() {
   return create_hooks<hook_connect, hook_WSAConnect, hook_WSAConnectByList,
-                      hook_WSAConnectByNameA, hook_WSAConnectByNameW>();
+                      hook_WSAConnectByNameA, hook_WSAConnectByNameW,
+                      hook_CreateProcessA, hook_CreateProcessW>();
 }
 
 #endif

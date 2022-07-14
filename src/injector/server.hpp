@@ -89,6 +89,15 @@ struct injector_server {
 
   void disable_log() { enable_log(false); }
 
+  void enable_subprocess(bool enable = true) {
+    std::lock_guard guard(config_mutex);
+    config_["subprocess"_f] = enable;
+
+    broadcast_config();
+  }
+
+  void disable_subprocess() { enable_subprocess(false); }
+
   InjectorConfig get_config() {
     std::lock_guard guard(config_mutex);
     return config_;
@@ -159,6 +168,9 @@ struct injectee_session : injectee_client,
   virtual asio::awaitable<void> process_connect(const InjecteeConnect &msg) {
     co_return;
   }
+  virtual asio::awaitable<void> process_subpid(std::uint16_t pid, bool result) {
+    co_return;
+  }
   virtual void process_close() {}
 
   asio::awaitable<void> process(const InjecteeMessage &msg) {
@@ -169,6 +181,8 @@ struct injectee_session : injectee_client,
       co_await process_pid();
     } else if (auto v = compare_message<"connect">(msg)) {
       co_await process_connect(*v);
+    } else if (auto v = compare_message<"subpid">(msg)) {
+      co_await process_subpid(*v, server_.inject(*v));
     }
   }
 
