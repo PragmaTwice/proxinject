@@ -49,9 +49,7 @@ BOOL WINAPI DllMain(HINSTANCE dll_handle, DWORD reason, LPVOID reserved) {
     DisableThreadLibraryCalls(dll_handle);
     minhook::init();
 
-    hook_connect::create();
-    hook_WSAConnect::create();
-    hook_WSAConnectByList::create();
+    hook_create_all();
 
     minhook::enable();
     std::thread(do_client, dll_handle, get_port()).detach();

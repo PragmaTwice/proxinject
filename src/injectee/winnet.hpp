@@ -24,13 +24,13 @@ std::optional<IpAddr> to_ip_addr(const sockaddr *name) {
 
   if (name->sa_family == AF_INET) {
     auto v4 = (const sockaddr_in *)name;
-    return IpAddr((std::uint32_t)ntohl(v4->sin_addr.s_addr), {},
+    return IpAddr((std::uint32_t)ntohl(v4->sin_addr.s_addr), {}, {},
                   ntohs(v4->sin_port));
   } else if (name->sa_family == AF_INET6) {
     auto v6 = (const sockaddr_in6 *)name;
     auto addr = std::bit_cast<std::array<unsigned char, 16>>(v6->sin6_addr);
     return IpAddr(std::nullopt,
-                  std::vector<unsigned char>{addr.rbegin(), addr.rend()},
+                  std::vector<unsigned char>{addr.rbegin(), addr.rend()}, {},
                   ntohs(v6->sin6_port));
   }
 

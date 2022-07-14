@@ -22,25 +22,27 @@ using pp::operator""_f;
 
 using IpAddr =
     pp::message<pp::uint32_field<"v4_addr", 1>, pp::bytes_field<"v6_addr", 2>,
-                pp::uint32_field<"port", 3>>;
+                pp::string_field<"domain", 4>, pp::uint32_field<"port", 3>>;
 
-inline std::pair<ip::address, std::uint16_t> to_asio(const IpAddr &ip) {
+inline std::pair<std::string, std::uint16_t> to_asio(const IpAddr &ip) {
   if (const auto &v = ip["v4_addr"_f]) {
-    return {ip::address_v4(v.value()), ip["port"_f].value()};
-  } else {
+    return {ip::address_v4(*v).to_string(), *ip["port"_f]};
+  } else if (const auto &v = ip["v6_addr"_f]) {
     ip::address_v6::bytes_type addr;
-    const auto &origin = ip["v6_addr"_f].value();
-    std::copy(origin.begin(), origin.end(), addr.begin());
-    return {ip::address_v6(addr), ip["port"_f].value()};
+    std::copy(v->begin(), v->end(), addr.begin());
+    return {ip::address_v6(addr).to_string(), *ip["port"_f]};
+  } else {
+    const auto &domain = ip["domain"_f];
+    return {*domain, *ip["port"_f]};
   }
 }
 
 inline IpAddr from_asio(const ip::address &addr, std::uint16_t port) {
   if (addr.is_v4()) {
-    return IpAddr{addr.to_v4().to_uint(), {}, port};
+    return IpAddr{addr.to_v4().to_uint(), {}, {}, port};
   } else {
     auto v = addr.to_v6().to_bytes();
-    return IpAddr{{}, std::vector<unsigned char>{v.begin(), v.end()}, port};
+    return IpAddr{{}, std::vector<unsigned char>{v.begin(), v.end()}, {}, port};
   }
 }
 
