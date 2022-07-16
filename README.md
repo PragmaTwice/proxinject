@@ -18,6 +18,9 @@
 $ ./proxinjector-cli -h
 Usage: proxinjector-cli [options]
 
+A socks5 proxy injection tool for Windows: just select some processes and make them proxy-able!
+Please visit https://github.com/PragmaTwice/proxinject for more information.
+
 Optional arguments:
 -h --help                       shows help message and exits [default: false]
 -v --version                    prints version information and exits [default: false]
@@ -27,11 +30,14 @@ Optional arguments:
 -l --enable-log                 enable logging for network connections [default: false]
 -p --set-proxy                  set a proxy address for network connections (string, i.e. `127.0.0.1:1080`) [default: ""]
 -w --new-console-window         create a new console window while a new console process is executed in `-e` [default: false]
+-s --subprocess                 inject subprocesses created by these already injected processes [default: false]
 ```
 
 ## How to Install
 
-- Download the latest portable archive (`.zip`) or installer (`.exe`) from the [Releases Page](https://github.com/PragmaTwice/proxinject/releases), or
+Choose whichever method you like:
+
+- Download the latest portable archive (`.zip`) or installer (`.exe`) from the [Releases Page](https://github.com/PragmaTwice/proxinject/releases), OR
 - Type `winget install PragmaTwice.proxinject` in the terminal ([winget](https://github.com/microsoft/winget-cli) is required)
 
 ## Development Dependencies
