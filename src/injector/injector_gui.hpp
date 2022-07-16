@@ -202,6 +202,9 @@ auto make_controls(injector_server &server, ce::view &view,
 
   auto log_box = share(selectable_text_box(""));
 
+  auto clean_button = icon_button(icons::trash, 1.2, bcblue);
+  clean_button.on_click = [log_box](bool) { log_box->set_text(""); };
+
   auto info_button = icon_button(icons::info, 1.2, bcblue);
   info_button.on_click = [&view](bool) {
     view.add(message_box1(view, proxinject_copyright(proxinject_version),
@@ -236,7 +239,8 @@ auto make_controls(injector_server &server, ce::view &view,
                   left_margin(10, make_tip_below_r(hold(proxy_toggle), "enable/disable proxy injection")),
                   left_margin(5, make_tip_below_r(log_toggle, "enable/disable connection log")),
                   left_margin(5, make_tip_below_r(subprocess_toggle, "enable/disable subprocess injection")),
-                  left_margin(8, make_tip_below_r(info_button, "software information"))
+                  left_margin(8, make_tip_below_r(clean_button, "clean the logging box")),
+                  left_margin(5, make_tip_below_r(info_button, "software information"))
                 ),
                 top_margin(10,
                   vmin_size(250, 
