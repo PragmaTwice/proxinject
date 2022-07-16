@@ -26,6 +26,7 @@ struct injector {
   static inline const FARPROC load_library =
       GetProcAddress(GetModuleHandleA("kernel32.dll"), "LoadLibraryW");
 
+#if defined(_WIN64)
   static inline const char wow64_address_dumper_filename[] =
       "wow64-address-dumper.exe";
 
@@ -49,10 +50,9 @@ struct injector {
       return std::nullopt;
     }
 
-    return (FARPROC)ec;
+    return reinterpret_cast<FARPROC>((uint64_t)ec);
   }
 
-#if defined(_WIN64)
   static inline const FARPROC load_library_wow64 =
       get_wow64_load_library().value_or(nullptr);
 #endif

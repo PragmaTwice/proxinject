@@ -16,66 +16,16 @@
 #include <asio.hpp>
 
 #include "injector.hpp"
-#include "server.hpp"
+#include "injector_cli.hpp"
 #include "utils.hpp"
 #include "version.hpp"
 #include <argparse/argparse.hpp>
-#include <csignal>
 #include <iostream>
-#include <spdlog/fmt/ostr.h>
-#include <spdlog/spdlog.h>
 
 using argparse::ArgumentParser;
 using namespace std;
-using namespace spdlog;
 
-struct injectee_session_cli : injectee_session {
-  using injectee_session::injectee_session;
-
-  asio::awaitable<void> process_connect(const InjecteeConnect &msg) override {
-    if (auto v = msg["proxy"_f])
-      info("{}: {} {} via {}", (int)pid_, *msg["syscall"_f], *msg["addr"_f],
-           *v);
-    else
-      info("{}: {} {}", (int)pid_, *msg["syscall"_f], *msg["addr"_f]);
-    co_return;
-  }
-
-  asio::awaitable<void> process_pid() override {
-    info("{}: established injectee connection", (int)pid_);
-    co_return;
-  }
-
-  asio::awaitable<void> process_subpid(std::uint16_t pid,
-                                       bool result) override {
-    info("{}: subprocess {} created, {}", (int)pid_, (int)pid,
-         result ? "successful injecting" : "failed to inject");
-    co_return;
-  }
-
-  void process_close() override {
-    info("{}: closed", (int)pid_);
-    if (server_.clients.size() == 0) {
-      info("all processes have been exited, exit");
-
-      exit(0);
-    }
-  }
-};
-
-optional<pair<string, uint16_t>> parse_address(const string &addr) {
-  auto delimiter = addr.find_last_of(':');
-  if (delimiter == string::npos) {
-    return nullopt;
-  }
-
-  auto host = addr.substr(0, delimiter);
-  uint16_t port = std::stoul(addr.substr(delimiter + 1));
-
-  return make_pair(host, port);
-}
-
-int main(int argc, char *argv[]) {
+auto create_parser() {
   ArgumentParser parser("proxinjector-cli", proxinject_version,
                         argparse::default_arguments::help);
 
@@ -130,6 +80,12 @@ int main(int argc, char *argv[]) {
       .help("inject subprocesses created by these already injected processes")
       .default_value(false)
       .implicit_value(true);
+
+  return parser;
+}
+
+int main(int argc, char *argv[]) {
+  auto parser = create_parser();
 
   try {
     parser.parse_args(argc, argv);
