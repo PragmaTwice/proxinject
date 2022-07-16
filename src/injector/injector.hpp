@@ -132,20 +132,28 @@ struct injector {
   }
 
   template <typename F> static void pid_by_name(std::string_view name, F &&f) {
-    match_process([name, &f](std::wstring file, DWORD pid) {
-      std::string file_u8 = utf8_encode(file);
+    match_process([name, &f](const PROCESSENTRY32 &entry) {
+      std::string file_u8 = utf8_encode(entry.szExeFile);
       if (file_u8.ends_with(".exe") &&
           file_u8.substr(0, file_u8.size() - 4) == name) {
-        std::forward<F>(f)(pid);
+        std::forward<F>(f)(entry.th32ProcessID);
+      }
+    });
+  }
+
+  template <typename F> static void enumerate_child_pids(DWORD pid, F &&f) {
+    match_process([pid, &f](const PROCESSENTRY32 &entry) {
+      if (pid == entry.th32ParentProcessID) {
+        std::forward<F>(f)(entry.th32ProcessID);
       }
     });
   }
 
   static auto get_process_name(DWORD pid) {
     std::wstring result;
-    match_process([pid, &result](std::wstring_view file, DWORD pid_) {
-      if (pid == pid_) {
-        result = file;
+    match_process([pid, &result](const PROCESSENTRY32 &entry) {
+      if (pid == entry.th32ProcessID) {
+        result = entry.szExeFile;
       }
     });
 

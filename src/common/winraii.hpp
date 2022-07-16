@@ -113,14 +113,12 @@ template <typename T> struct scope_ptr_bind {
 };
 
 template <typename F> void match_process(F &&f) {
-  PROCESSENTRY32 entry;
-  entry.dwSize = sizeof(PROCESSENTRY32);
-
-  handle snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
-
-  if (Process32First(snapshot.get(), &entry) == TRUE) {
-    while (Process32Next(snapshot.get(), &entry) == TRUE) {
-      std::forward<F>(f)(entry.szExeFile, entry.th32ProcessID);
+  if (handle snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL)) {
+    PROCESSENTRY32 entry = {sizeof(PROCESSENTRY32)};
+    if (Process32First(snapshot.get(), &entry)) {
+      do {
+        std::forward<F>(f)(entry);
+      } while (Process32Next(snapshot.get(), &entry));
     }
   }
 }

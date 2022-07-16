@@ -39,13 +39,6 @@ struct injectee_session_cli : injectee_session {
     co_return;
   }
 
-  asio::awaitable<void> process_subpid(std::uint16_t pid,
-                                       bool result) override {
-    info("{}: subprocess {} created, {}", (int)pid_, (int)pid,
-         result ? "successful injecting" : "failed to inject");
-    co_return;
-  }
-
   void process_close() override {
     info("{}: closed", (int)pid_);
     if (server_.clients.size() == 0) {
