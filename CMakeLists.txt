@@ -70,7 +70,7 @@ if(NOT PROXINJECTEE_ONLY)
 	set(ELEMENTS_BUILD_EXAMPLES OFF CACHE BOOL "")
 	FetchContent_Declare(elements
 		GIT_REPOSITORY https://github.com/PragmaTwice/elements
-		GIT_TAG 3d5d5b0216839c4722394b499eeabf9af010c627
+		GIT_TAG 8e4dfff096892ba16e437baaa0cecec3044bc231
 		GIT_SUBMODULES_RECURSE ON
 	)
 
