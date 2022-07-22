@@ -184,6 +184,25 @@ struct hook_WSAConnectByName : minhook::api<F, hook_WSAConnectByName<F, N>> {
           queue->push(create_message<InjecteeMessage, "connect">(
               InjecteeConnect{(std::uint32_t)s, addr, proxy, N}));
         }
+
+        if (proxy) {
+          if (auto [proxysa, addr_size] = to_sockaddr(*proxy); proxysa) {
+            auto ret = connect(s, &*proxysa, addr_size);
+            if (ret)
+              return ret;
+
+            if (!socks5_handshake(s)) {
+              shutdown(s, SD_BOTH);
+              return SOCKET_ERROR;
+            }
+            if (socks5_request(s, *addr) != SOCKS_SUCCESS) {
+              shutdown(s, SD_BOTH);
+              return SOCKET_ERROR;
+            }
+
+            return 0;
+          }
+        }
       }
     }
 

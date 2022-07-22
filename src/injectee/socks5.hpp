@@ -15,6 +15,7 @@
 
 #include <WinSock2.h>
 #include <cstddef>
+#include <schema.hpp>
 
 constexpr const char SOCKS_VERSION = 5;
 constexpr const char SOCKS_NO_AUTHENTICATION = 0;
@@ -41,26 +42,8 @@ bool socks5_handshake(SOCKET s) {
   return res[0] == SOCKS_VERSION && res[1] == SOCKS_NO_AUTHENTICATION;
 }
 
-char socks5_request(SOCKET s, const sockaddr *addr) {
-  char buf[SOCKS_REQUEST_MAX_SIZE] = {SOCKS_VERSION, SOCKS_CONNECT, 0};
-
-  char *ptr = buf + 3;
-  if (addr->sa_family == AF_INET) {
-    auto v4 = (const sockaddr_in *)addr;
-    *ptr++ = SOCKS_IPV4;
-    *((ULONG *&)ptr)++ = v4->sin_addr.s_addr;
-    *((USHORT *&)ptr)++ = v4->sin_port;
-  } else if (addr->sa_family == AF_INET6) {
-    auto v6 = (const sockaddr_in6 *)addr;
-    *ptr++ = SOCKS_IPV6;
-    ptr = std::copy((const char *)&v6->sin6_addr,
-                    (const char *)(&v6->sin6_addr + 1), ptr);
-    *((USHORT *&)ptr)++ = v6->sin6_port;
-  } else {
-    return SOCKS_GENERAL_FAILURE;
-  }
-
-  if (send(s, buf, ptr - buf, 0) != ptr - buf)
+char socks5_request_send(SOCKET s, char *buf, size_t size) {
+  if (send(s, buf, size, 0) != size)
     return SOCKS_GENERAL_FAILURE;
 
   if (recv(s, buf, 4, 0) == SOCKET_ERROR)
@@ -80,4 +63,51 @@ char socks5_request(SOCKET s, const sockaddr *addr) {
   }
 
   return SOCKS_SUCCESS;
+}
+
+char socks5_request(SOCKET s, const sockaddr *addr) {
+  char buf[SOCKS_REQUEST_MAX_SIZE] = {SOCKS_VERSION, SOCKS_CONNECT, 0};
+
+  char *ptr = buf + 3;
+  if (addr->sa_family == AF_INET) {
+    auto v4 = (const sockaddr_in *)addr;
+    *ptr++ = SOCKS_IPV4;
+    *((ULONG *&)ptr)++ = v4->sin_addr.s_addr;
+    *((USHORT *&)ptr)++ = v4->sin_port;
+  } else if (addr->sa_family == AF_INET6) {
+    auto v6 = (const sockaddr_in6 *)addr;
+    *ptr++ = SOCKS_IPV6;
+    ptr = std::copy((const char *)&v6->sin6_addr,
+                    (const char *)(&v6->sin6_addr + 1), ptr);
+    *((USHORT *&)ptr)++ = v6->sin6_port;
+  } else {
+    return SOCKS_GENERAL_FAILURE;
+  }
+
+  return socks5_request_send(s, buf, ptr - buf);
+}
+
+char socks5_request(SOCKET s, const IpAddr &addr) {
+  char buf[SOCKS_REQUEST_MAX_SIZE] = {SOCKS_VERSION, SOCKS_CONNECT, 0};
+
+  char *ptr = buf + 3;
+  if (auto v4 = addr["v4_addr"_f]) {
+    *ptr++ = SOCKS_IPV4;
+    *((ULONG *&)ptr)++ = *v4;
+  } else if (auto v6 = addr["v6_addr"_f]) {
+    *ptr++ = SOCKS_IPV6;
+    ptr = std::copy(v6->begin(), v6->end(), ptr);
+  } else if (auto domain = addr["domain"_f]) {
+    *ptr++ = SOCKS_DOMAINNAME;
+    if (domain->size() >= 256) {
+      return SOCKS_GENERAL_FAILURE;
+    }
+    *ptr++ = (char)domain->size();
+    ptr = std::copy(domain->begin(), domain->end(), ptr);
+  } else {
+    return SOCKS_GENERAL_FAILURE;
+  }
+  *((USHORT *&)ptr)++ = *addr["port"_f];
+
+  return socks5_request_send(s, buf, ptr - buf);
 }
