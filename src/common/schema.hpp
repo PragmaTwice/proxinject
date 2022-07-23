@@ -46,7 +46,7 @@ inline IpAddr from_asio(const ip::address &addr, std::uint16_t port) {
   }
 }
 
-template <typename OS> OS &operator<<(OS &stream, const IpAddr &addr) {
+template <typename OS> auto &operator<<(OS &stream, const IpAddr &addr) {
   auto [address, port] = to_asio(addr);
   return stream << address << ":" << port;
 }

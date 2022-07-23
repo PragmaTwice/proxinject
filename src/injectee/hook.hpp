@@ -27,6 +27,7 @@
 
 inline blocking_queue<InjecteeMessage> *queue = nullptr;
 inline injectee_config *config = nullptr;
+inline std::map<SOCKET, bool> *nbio_map = nullptr;
 
 template <auto F, pp::basic_fixed_string N>
 struct hook_connect_fn : minhook::api<F, hook_connect_fn<F, N>> {
@@ -49,7 +50,7 @@ struct hook_connect_fn : minhook::api<F, hook_connect_fn<F, N>> {
         if (proxy) {
           if (auto [addr, addr_size] = to_sockaddr(*proxy);
               addr && !sockequal(addr.get(), name)) {
-            auto ret = base::original(s, &*addr, addr_size, args...);
+            auto ret = base::original(s, addr.get(), addr_size, args...);
             if (ret)
               return ret;
 
@@ -101,7 +102,7 @@ struct hook_WSAConnectByList
             if (proxy) {
               if (auto [addr, addr_size] = to_sockaddr(*proxy);
                   addr && !sockequal(addr.get(), name)) {
-                auto ret = connect(s, &*addr, addr_size);
+                auto ret = hook_connect::original(s, addr.get(), addr_size);
                 if (ret)
                   return ret;
 
@@ -114,7 +115,19 @@ struct hook_WSAConnectByList
                   continue;
                 }
 
-                return 0;
+                *RemoteAddressLength =
+                    std::min(*RemoteAddressLength, (DWORD)addr_size);
+                memcpy(RemoteAddress, addr.get(), *RemoteAddressLength);
+
+                sockaddr local;
+                int local_size = sizeof(local);
+                getsockname(s, &local, &local_size);
+
+                *LocalAddressLength =
+                    std::min(*LocalAddressLength, (DWORD)local_size);
+                memcpy(LocalAddress, &local, *LocalAddressLength);
+
+                return TRUE;
               }
             }
           }
@@ -122,7 +135,7 @@ struct hook_WSAConnectByList
       }
 
       if (proxy)
-        return SOCKET_ERROR;
+        return FALSE;
     }
 
     return original(s, SocketAddress, LocalAddressLength, LocalAddress,
@@ -187,20 +200,36 @@ struct hook_WSAConnectByName : minhook::api<F, hook_WSAConnectByName<F, N>> {
 
         if (proxy) {
           if (auto [proxysa, addr_size] = to_sockaddr(*proxy); proxysa) {
-            auto ret = connect(s, &*proxysa, addr_size);
+            auto ret = hook_connect::original(s, &*proxysa, addr_size);
             if (ret)
               return ret;
 
             if (!socks5_handshake(s)) {
               shutdown(s, SD_BOTH);
-              return SOCKET_ERROR;
+              return FALSE;
             }
             if (socks5_request(s, *addr) != SOCKS_SUCCESS) {
               shutdown(s, SD_BOTH);
-              return SOCKET_ERROR;
+              return FALSE;
             }
 
-            return 0;
+            sockaddr peer;
+            int peer_size = sizeof(peer);
+            getsockname(s, &peer, &peer_size);
+
+            *RemoteAddressLength =
+                std::min(*RemoteAddressLength, (DWORD)peer_size);
+            memcpy(RemoteAddress, &peer, *RemoteAddressLength);
+
+            sockaddr local;
+            int local_size = sizeof(local);
+            getsockname(s, &local, &local_size);
+
+            *LocalAddressLength =
+                std::min(*LocalAddressLength, (DWORD)local_size);
+            memcpy(LocalAddress, &local, *LocalAddressLength);
+
+            return TRUE;
           }
         }
       }
@@ -263,6 +292,139 @@ struct hook_CreateProcess : minhook::api<F, hook_CreateProcess<F>> {
 struct hook_CreateProcessA : hook_CreateProcess<CreateProcessA> {};
 struct hook_CreateProcessW : hook_CreateProcess<CreateProcessW> {};
 
+struct hook_ioctlsocket : minhook::api<ioctlsocket, hook_ioctlsocket> {
+  static int WSAAPI detour(SOCKET s, long cmd, u_long FAR *argp) {
+    if (nbio_map && cmd == FIONBIO) {
+      (*nbio_map)[s] = *argp;
+    }
+
+    return original(s, cmd, argp);
+  }
+};
+struct hook_WSAAsyncSelect : minhook::api<WSAAsyncSelect, hook_WSAAsyncSelect> {
+  static int WSAAPI detour(SOCKET s, HWND hWnd, u_int wMsg, long lEvent) {
+    if (nbio_map) {
+      (*nbio_map)[s] = true;
+    }
+
+    return original(s, hWnd, wMsg, lEvent);
+  }
+};
+struct hook_WSAEventSelect : minhook::api<WSAEventSelect, hook_WSAEventSelect> {
+  static int WSAAPI detour(SOCKET s, WSAEVENT hEventObject,
+                           long lNetworkEvents) {
+    if (nbio_map) {
+      (*nbio_map)[s] = true;
+    }
+
+    return original(s, hEventObject, lNetworkEvents);
+  }
+};
+
+struct blocking_scope {
+  SOCKET sock;
+
+  blocking_scope(SOCKET s) : sock(s) {
+    u_long nb = FALSE;
+    hook_ioctlsocket::original(sock, FIONBIO, &nb);
+  }
+  ~blocking_scope() {
+    if (nbio_map) {
+      u_long nb = FALSE;
+      if (auto iter = nbio_map->find(sock); iter != nbio_map->end()) {
+        nb = (u_long)iter->second;
+      }
+      hook_ioctlsocket::original(sock, FIONBIO, &nb);
+    }
+  }
+
+  blocking_scope(const blocking_scope &) = delete;
+  blocking_scope(blocking_scope &&) = delete;
+};
+
+struct hook_ConnectEx {
+
+  static inline LPFN_CONNECTEX ConnectEx = nullptr;
+
+  static LPFN_CONNECTEX GetConnectEx() {
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+    SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    DWORD numBytes = 0;
+    GUID guid = WSAID_CONNECTEX;
+    LPFN_CONNECTEX ConnectExPtr = nullptr;
+
+    WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, (void *)&guid, sizeof(guid),
+             (void *)&ConnectExPtr, sizeof(ConnectExPtr), &numBytes, nullptr,
+             nullptr);
+
+    closesocket(s);
+    return ConnectExPtr;
+  }
+
+  static inline decltype(ConnectEx) original = nullptr;
+
+  static BOOL PASCAL detour(SOCKET s, const struct sockaddr *name, int namelen,
+                            PVOID lpSendBuffer, DWORD dwSendDataLength,
+                            LPDWORD lpdwBytesSent, LPOVERLAPPED lpOverlapped) {
+    if (is_inet(name) && config && !is_localhost(name)) {
+      auto cfg = config->get();
+      if (auto v = to_ip_addr(name)) {
+
+        auto proxy = cfg["addr"_f];
+        auto log = cfg["log"_f];
+        if (queue && log && log.value()) {
+          queue->push(create_message<InjecteeMessage, "connect">(
+              InjecteeConnect{(std::uint32_t)s, *v, proxy, "ConnectEx"}));
+        }
+
+        if (proxy) {
+          if (auto [addr, addr_size] = to_sockaddr(*proxy);
+              addr && !sockequal(addr.get(), name)) {
+            blocking_scope scope(s);
+
+            auto ret = hook_connect::original(s, &*addr, addr_size);
+            if (ret)
+              return ret;
+
+            if (!socks5_handshake(s)) {
+              shutdown(s, SD_BOTH);
+              return FALSE;
+            }
+            if (socks5_request(s, name) != SOCKS_SUCCESS) {
+              shutdown(s, SD_BOTH);
+              return FALSE;
+            }
+
+            if (lpSendBuffer) {
+              int len =
+                  send(s, (const char *)lpSendBuffer, dwSendDataLength, 0);
+              if (len == SOCKET_ERROR) {
+                shutdown(s, SD_BOTH);
+                return FALSE;
+              }
+
+              *lpdwBytesSent = len;
+            }
+
+            return TRUE;
+          }
+        }
+      }
+    }
+    return original(s, name, namelen, lpSendBuffer, dwSendDataLength,
+                    lpdwBytesSent, lpOverlapped);
+  }
+
+  static minhook::status create() {
+    ConnectEx = GetConnectEx();
+    return minhook::create(ConnectEx, detour, original);
+  }
+
+  static minhook::status remove() { return minhook::remove(ConnectEx); }
+};
+
 template <typename T, typename... Ts> minhook::status create_hooks() {
   if (auto status = T::create(); status.error()) {
     return status;
@@ -278,7 +440,9 @@ template <typename T, typename... Ts> minhook::status create_hooks() {
 inline minhook::status hook_create_all() {
   return create_hooks<hook_connect, hook_WSAConnect, hook_WSAConnectByList,
                       hook_WSAConnectByNameA, hook_WSAConnectByNameW,
-                      hook_CreateProcessA, hook_CreateProcessW>();
+                      hook_CreateProcessA, hook_CreateProcessW,
+                      hook_ioctlsocket, hook_WSAAsyncSelect,
+                      hook_WSAEventSelect, hook_ConnectEx>();
 }
 
 #endif

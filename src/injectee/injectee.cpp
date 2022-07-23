@@ -23,9 +23,11 @@ void do_client(HINSTANCE dll_handle, std::uint16_t port) {
     auto qu =
         std::make_unique<blocking_queue<InjecteeMessage>>(io_context, 1024);
     auto cfg = std::make_unique<injectee_config>();
+    auto sock_map = std::make_unique<std::map<SOCKET, bool>>();
 
     scope_ptr_bind queue_bind(queue, qu.get());
     scope_ptr_bind config_bind(config, cfg.get());
+    scope_ptr_bind map_bind(nbio_map, sock_map.get());
 
     injectee_client c(io_context, tcp::endpoint(localhost, port), *queue,
                       *config);
