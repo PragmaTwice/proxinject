@@ -17,8 +17,10 @@
 #define PROXINJECT_INJECTOR_INJECTOR_GUI
 
 #include "server.hpp"
+#include "ui_elements/dynamic_list.hpp"
 #include "ui_elements/text_box.hpp"
 #include "ui_elements/tooltip.hpp"
+
 #include "utils.hpp"
 #include "version.hpp"
 #include <elements.hpp>
@@ -45,7 +47,7 @@ struct injectee_session_ui : injectee_session {
   ce::view &view_;
   process_vector &vec_;
 
-  ce::dynamic_list &list_;
+  ce::dynamic_list_s &list_;
   ce::selectable_text_box &log_;
 
   asio::awaitable<void> process_connect(const InjecteeConnect &msg) override {
@@ -162,7 +164,7 @@ auto make_controls(injector_server &server, ce::view &view,
     inject_click([&server](DWORD x) { return server.close(x); });
   };
 
-  auto process_list = share(dynamic_list(basic_cell_composer(
+  auto process_list = share(dynamic_list_s(basic_cell_composer(
       process_vec.size(), [&process_vec](size_t index) -> element_ptr {
         if (index < process_vec.size()) {
           auto [pid, name] = process_vec[index];

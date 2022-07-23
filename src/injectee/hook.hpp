@@ -200,7 +200,7 @@ struct hook_WSAConnectByName : minhook::api<F, hook_WSAConnectByName<F, N>> {
 
         if (proxy) {
           if (auto [proxysa, addr_size] = to_sockaddr(*proxy); proxysa) {
-            auto ret = hook_connect::original(s, &*proxysa, addr_size);
+            auto ret = hook_connect::original(s, proxysa.get(), addr_size);
             if (ret)
               return ret;
 
@@ -384,7 +384,7 @@ struct hook_ConnectEx {
               addr && !sockequal(addr.get(), name)) {
             blocking_scope scope(s);
 
-            auto ret = hook_connect::original(s, &*addr, addr_size);
+            auto ret = hook_connect::original(s, addr.get(), addr_size);
             if (ret)
               return ret;
 
