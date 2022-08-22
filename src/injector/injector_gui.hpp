@@ -58,7 +58,8 @@ struct injectee_session_ui : injectee_session {
       stream << " via " << *v;
     stream << "\n";
 
-    log_.set_text(log_.get_text() + stream.str());
+    view_.post(
+        [this, str = stream.str()] { log_.set_text(log_.get_text() + str); });
     view_.refresh();
 
     co_return;
