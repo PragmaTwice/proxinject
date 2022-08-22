@@ -32,8 +32,7 @@ class dynamic_list_s : public element {
 public:
   using composer_ptr = std::shared_ptr<cell_composer>;
 
-  dynamic_list_s(composer_ptr composer)
-      : _composer(composer), _draw_mutex(std::make_unique<std::mutex>()) {}
+  dynamic_list_s(composer_ptr composer) : _composer(composer) {}
 
   virtual view_limits limits(basic_context const &ctx) const override;
   void draw(context const &ctx) override;
@@ -106,8 +105,6 @@ private:
   int _click_tracking = -1;
   int _cursor_tracking = -1;
   std::set<int> _cursor_hovering;
-
-  std::unique_ptr<std::mutex> _draw_mutex;
 };
 
 } // namespace elements

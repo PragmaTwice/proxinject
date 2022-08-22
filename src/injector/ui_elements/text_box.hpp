@@ -93,8 +93,6 @@ private:
   bool _is_focus : 1;
   bool _show_caret : 1;
   bool _caret_started : 1;
-
-  std::unique_ptr<std::mutex> _draw_mutex;
 };
 
 } // namespace cycfi::elements

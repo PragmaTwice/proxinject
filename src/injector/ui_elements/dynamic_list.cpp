@@ -25,8 +25,6 @@ namespace cycfi {
 namespace elements {
 
 view_limits dynamic_list_s::limits(basic_context const &ctx) const {
-  std::unique_lock lock(*_draw_mutex);
-
   if (_composer) {
     if (_update_request) {
       update(ctx);
@@ -40,8 +38,6 @@ view_limits dynamic_list_s::limits(basic_context const &ctx) const {
 }
 
 void dynamic_list_s::draw(context const &ctx) {
-  std::unique_lock lock(*_draw_mutex);
-
   // Johann Philippe : this seems to be necessary for context where a
   // hdynamic_list is inside vdynamic_list (2D tables)
   if (_update_request)
@@ -101,8 +97,6 @@ void dynamic_list_s::draw(context const &ctx) {
 }
 
 void dynamic_list_s::layout(context const &ctx) {
-  std::unique_lock lock(*_draw_mutex);
-
   if (_previous_size.x != ctx.bounds.width() ||
       _previous_size.y != ctx.bounds.height()) {
     _previous_size.x = ctx.bounds.width();
@@ -112,8 +106,6 @@ void dynamic_list_s::layout(context const &ctx) {
 }
 
 void dynamic_list_s::update() {
-  std::unique_lock lock(*_draw_mutex);
-
   _update_request = true;
   _cells.clear();
   _main_axis_full_size = 0;

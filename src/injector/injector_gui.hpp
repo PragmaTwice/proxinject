@@ -58,8 +58,9 @@ struct injectee_session_ui : injectee_session {
       stream << " via " << *v;
     stream << "\n";
 
-    view_.post(
-        [this, str = stream.str()] { log_.set_text(log_.get_text() + str); });
+    view_.post([&log = log_, str = stream.str()] {
+      log.set_text(log.get_text() + str);
+    });
     view_.refresh();
 
     co_return;
@@ -83,7 +84,7 @@ struct injectee_session_ui : injectee_session {
 
   void refresh() {
     std::sort(vec_.begin(), vec_.end());
-    list_.resize(vec_.size());
+    view_.post([&list = list_, &vec = vec_] { list.resize(vec.size()); });
     view_.refresh();
   }
 };
