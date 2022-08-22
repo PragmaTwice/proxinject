@@ -29,6 +29,56 @@ inline blocking_queue<InjecteeMessage> *queue = nullptr;
 inline injectee_config *config = nullptr;
 inline std::map<SOCKET, bool> *nbio_map = nullptr;
 
+struct hook_ioctlsocket : minhook::api<ioctlsocket, hook_ioctlsocket> {
+  static int WSAAPI detour(SOCKET s, long cmd, u_long FAR *argp) {
+    if (nbio_map && cmd == FIONBIO) {
+      (*nbio_map)[s] = *argp;
+    }
+
+    return original(s, cmd, argp);
+  }
+};
+struct hook_WSAAsyncSelect : minhook::api<WSAAsyncSelect, hook_WSAAsyncSelect> {
+  static int WSAAPI detour(SOCKET s, HWND hWnd, u_int wMsg, long lEvent) {
+    if (nbio_map) {
+      (*nbio_map)[s] = true;
+    }
+
+    return original(s, hWnd, wMsg, lEvent);
+  }
+};
+struct hook_WSAEventSelect : minhook::api<WSAEventSelect, hook_WSAEventSelect> {
+  static int WSAAPI detour(SOCKET s, WSAEVENT hEventObject,
+                           long lNetworkEvents) {
+    if (nbio_map) {
+      (*nbio_map)[s] = true;
+    }
+
+    return original(s, hEventObject, lNetworkEvents);
+  }
+};
+
+struct blocking_scope {
+  SOCKET sock;
+
+  blocking_scope(SOCKET s) : sock(s) {
+    u_long nb = FALSE;
+    hook_ioctlsocket::original(sock, FIONBIO, &nb);
+  }
+  ~blocking_scope() {
+    if (nbio_map) {
+      u_long nb = FALSE;
+      if (auto iter = nbio_map->find(sock); iter != nbio_map->end()) {
+        nb = (u_long)iter->second;
+      }
+      hook_ioctlsocket::original(sock, FIONBIO, &nb);
+    }
+  }
+
+  blocking_scope(const blocking_scope &) = delete;
+  blocking_scope(blocking_scope &&) = delete;
+};
+
 template <auto F, pp::basic_fixed_string N>
 struct hook_connect_fn : minhook::api<F, hook_connect_fn<F, N>> {
   using base = minhook::api<F, hook_connect_fn<F, N>>;
@@ -50,6 +100,8 @@ struct hook_connect_fn : minhook::api<F, hook_connect_fn<F, N>> {
         if (proxy) {
           if (auto [addr, addr_size] = to_sockaddr(*proxy);
               addr && !sockequal(addr.get(), name)) {
+            blocking_scope scope(s);
+
             auto ret = base::original(s, addr.get(), addr_size, args...);
             if (ret)
               return ret;
@@ -102,6 +154,8 @@ struct hook_WSAConnectByList
             if (proxy) {
               if (auto [addr, addr_size] = to_sockaddr(*proxy);
                   addr && !sockequal(addr.get(), name)) {
+                blocking_scope scope(s);
+
                 auto ret = hook_connect::original(s, addr.get(), addr_size);
                 if (ret)
                   return ret;
@@ -200,6 +254,8 @@ struct hook_WSAConnectByName : minhook::api<F, hook_WSAConnectByName<F, N>> {
 
         if (proxy) {
           if (auto [proxysa, addr_size] = to_sockaddr(*proxy); proxysa) {
+            blocking_scope scope(s);
+
             auto ret = hook_connect::original(s, proxysa.get(), addr_size);
             if (ret)
               return ret;
@@ -291,56 +347,6 @@ struct hook_CreateProcess : minhook::api<F, hook_CreateProcess<F>> {
 
 struct hook_CreateProcessA : hook_CreateProcess<CreateProcessA> {};
 struct hook_CreateProcessW : hook_CreateProcess<CreateProcessW> {};
-
-struct hook_ioctlsocket : minhook::api<ioctlsocket, hook_ioctlsocket> {
-  static int WSAAPI detour(SOCKET s, long cmd, u_long FAR *argp) {
-    if (nbio_map && cmd == FIONBIO) {
-      (*nbio_map)[s] = *argp;
-    }
-
-    return original(s, cmd, argp);
-  }
-};
-struct hook_WSAAsyncSelect : minhook::api<WSAAsyncSelect, hook_WSAAsyncSelect> {
-  static int WSAAPI detour(SOCKET s, HWND hWnd, u_int wMsg, long lEvent) {
-    if (nbio_map) {
-      (*nbio_map)[s] = true;
-    }
-
-    return original(s, hWnd, wMsg, lEvent);
-  }
-};
-struct hook_WSAEventSelect : minhook::api<WSAEventSelect, hook_WSAEventSelect> {
-  static int WSAAPI detour(SOCKET s, WSAEVENT hEventObject,
-                           long lNetworkEvents) {
-    if (nbio_map) {
-      (*nbio_map)[s] = true;
-    }
-
-    return original(s, hEventObject, lNetworkEvents);
-  }
-};
-
-struct blocking_scope {
-  SOCKET sock;
-
-  blocking_scope(SOCKET s) : sock(s) {
-    u_long nb = FALSE;
-    hook_ioctlsocket::original(sock, FIONBIO, &nb);
-  }
-  ~blocking_scope() {
-    if (nbio_map) {
-      u_long nb = FALSE;
-      if (auto iter = nbio_map->find(sock); iter != nbio_map->end()) {
-        nb = (u_long)iter->second;
-      }
-      hook_ioctlsocket::original(sock, FIONBIO, &nb);
-    }
-  }
-
-  blocking_scope(const blocking_scope &) = delete;
-  blocking_scope(blocking_scope &&) = delete;
-};
 
 struct hook_ConnectEx {
 
