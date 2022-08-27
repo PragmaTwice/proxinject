@@ -40,12 +40,24 @@ Choose whichever method you like:
 - Download the latest portable archive (`.zip`) or installer (`.exe`) from the [Releases Page](https://github.com/PragmaTwice/proxinject/releases), OR
 - Type `winget install PragmaTwice.proxinject` in the terminal ([winget](https://github.com/microsoft/winget-cli) is required)
 
+Or build from source (not recommended for non-professionals):
+
+```sh
+# make sure your develop environment is well configured in powershell
+git clone https://github.com/PragmaTwice/proxinject.git
+cd proxinject
+./build.ps1 -mode Release -arch x64 # build the project via CMake and msbuild
+# your built binaries are now in the `./release` directory, enjoy it now!
+makensis /DVERSION=$(git describe --tags) setup.nsi # (optional) genrate an installer via NSIS
+```
+
 ## Development Dependencies
 
 ### environments:
 
 - C++ compiler (with C++20 support, currently MSVC)
 - Windows SDK (with winsock2 support)
+- CMake 3
 
 ### libraries: 
 (you do not need to download/install them manually)
