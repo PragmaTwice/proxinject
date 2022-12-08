@@ -106,20 +106,37 @@ auto make_tip_below_r(T &&element, const std::string &tip) {
   return res;
 }
 
-std::map<std::string_view, std::string_view> input_tip_text{
-    {"pid", "process ID"}, {"name", "process name"}, {"exec", "command line"}};
+const std::vector<std::pair<std::string_view, std::string_view>> input_tips{
+    {"pid", "a process ID (e.g. `2333`)"},
+    {"name", "a process name (e.g. `python`, `firefox`)"},
+    {"exec",
+     "command line (e.g. `python`, `C:/programs/something --some-option`)"}};
+
+const std::map<std::string_view, std::string_view>
+    input_tip_texts(input_tips.begin(), input_tips.end());
+
+const std::vector<std::string_view> input_tip_options = [] {
+  std::vector<std::string_view> result;
+
+  for (const auto &[key, _] : input_tips) {
+    result.emplace_back(key);
+  }
+
+  return result;
+}();
 
 auto make_controls(injector_server &server, ce::view &view,
                    process_vector &process_vec) {
   using namespace ce;
 
   auto [process_input, process_input_ptr] =
-      input_box(std::string(input_tip_text["pid"]));
+      input_box(std::string(input_tip_texts.at("pid")));
+
   auto [input_select, input_select_ptr] = selection_menu(
       [process_input_ptr](auto str) {
-        process_input_ptr->_placeholder = input_tip_text[str];
+        process_input_ptr->_placeholder = input_tip_texts.at(str);
       },
-      {"pid", "name", "exec"});
+      input_tip_options);
 
   auto inject_click = [input_select_ptr, process_input_ptr]<typename F>(F &&f) {
     auto text = trim_copy(process_input_ptr->get_text());
