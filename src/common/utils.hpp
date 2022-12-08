@@ -110,12 +110,30 @@ bool filename_wildcard_match(const char *pattern, const char *str) {
       ++str;
       break;
     default:
-      if (*str != *pattern)
+      if (std::tolower(*str) != std::tolower(*pattern))
         return false;
       ++str;
     }
   }
   return *str == 0;
+}
+
+std::size_t replace_all_inplace(std::string &inout, std::string_view what,
+                                std::string_view with) {
+  std::size_t count{};
+  for (std::string::size_type pos{};
+       inout.npos != (pos = inout.find(what.data(), pos, what.length()));
+       pos += with.length(), ++count) {
+    inout.replace(pos, what.length(), with.data(), with.length());
+  }
+  return count;
+}
+
+std::string replace_all(const std::string &input, std::string_view what,
+                        std::string_view with) {
+  std::string result = input;
+  replace_all_inplace(result, what, with);
+  return result;
 }
 
 static inline const std::wstring port_mapping_name = L"PROXINJECT_PORT_IPC_";

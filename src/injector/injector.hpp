@@ -19,6 +19,7 @@
 #include "utils.hpp"
 #include "winraii.hpp"
 #include <filesystem>
+#include <regex>
 
 namespace fs = std::filesystem;
 
@@ -131,24 +132,72 @@ struct injector {
     return false;
   }
 
-  template <typename F> static void pid_by_name(std::string_view name, F &&f) {
-    match_process([name, &f](const PROCESSENTRY32 &entry) {
-      std::string file_u8 = utf8_encode(entry.szExeFile);
-      if (file_u8.ends_with(".exe") &&
-          filename_wildcard_match(
-              name.data(), file_u8.substr(0, file_u8.size() - 4).data())) {
-        std::forward<F>(f)(entry.th32ProcessID);
+  template <typename F> static void match_process_by_name(F &&f) {
+    match_process([&f](const PROCESSENTRY32 &entry) {
+      std::string name_u8 = utf8_encode(entry.szExeFile);
+      if (name_u8.ends_with(".exe")) {
+        auto name = name_u8.substr(0, name_u8.size() - 4);
+        std::forward<F>(f)(name, entry.th32ProcessID);
       }
     });
   }
 
-  template <typename F> static void pid_by_path(std::string_view name, F &&f) {
-    match_process([name, &f](const PROCESSENTRY32 &entry) {
+  template <typename F> static void match_process_by_path(F &&f) {
+    match_process([&f](const PROCESSENTRY32 &entry) {
       if (auto wpath = get_process_filepath(entry.th32ProcessID)) {
         auto path = utf8_encode(*wpath);
-        if (filename_wildcard_match(name.data(), path.data())) {
-          std::forward<F>(f)(entry.th32ProcessID);
-        }
+        std::forward<F>(f)(path, entry.th32ProcessID);
+      }
+    });
+  }
+
+  static bool regex_match_filename(const std::string &pattern,
+                                   const std::string &input) {
+    bool matched = false;
+
+    try {
+      std::regex re(pattern, std::regex_constants::icase |
+                                 std::regex_constants::ECMAScript);
+      matched = std::regex_match(replace_all(input, "/", "\\"), re) ||
+                std::regex_match(replace_all(input, "\\", "/"), re);
+    } catch (const std::regex_error &) {
+    }
+
+    return matched;
+  }
+
+  template <typename F>
+  static void pid_by_name_wildcard(const std::string &name, F &&f) {
+    match_process_by_name([name, &f](const std::string &pname, DWORD pid) {
+      if (filename_wildcard_match(name.data(), pname.data())) {
+        std::forward<F>(f)(pid);
+      }
+    });
+  }
+
+  template <typename F>
+  static void pid_by_name_regex(const std::string &name, F &&f) {
+    match_process_by_name([name, &f](const std::string &pname, DWORD pid) {
+      if (regex_match_filename(name, pname)) {
+        std::forward<F>(f)(pid);
+      }
+    });
+  }
+
+  template <typename F>
+  static void pid_by_path_wildcard(const std::string &path, F &&f) {
+    match_process_by_path([path, &f](const std::string &ppath, DWORD pid) {
+      if (filename_wildcard_match(path.data(), ppath.data())) {
+        std::forward<F>(f)(pid);
+      }
+    });
+  }
+
+  template <typename F>
+  static void pid_by_path_regex(const std::string &path, F &&f) {
+    match_process_by_path([path, &f](const std::string &ppath, DWORD pid) {
+      if (regex_match_filename(path, ppath)) {
+        std::forward<F>(f)(pid);
       }
     });
   }
