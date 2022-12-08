@@ -62,15 +62,15 @@ auto create_parser() {
       .append();
 
   parser.add_argument("-r", "--name-regexp")
-      .help("regular expression for short filename of a process with wildcard "
-            "matching to inject proxy (string, without directory and file "
+      .help("regular expression for short filename of a process "
+            "to inject proxy (string, without directory and file "
             "extension, e.g. `python`, `py.*|exp.*`)")
       .default_value(vector<string>{})
       .append();
 
   parser.add_argument("-R", "--path-regexp")
-      .help("regular expression for full filename of a process with wildcard "
-            "matching to inject proxy (string, with directory and file "
+      .help("regular expression for full filename of a process "
+            "to inject proxy (string, with directory and file "
             "extension, e.g. `C:/programs/python.exe`, "
             "`C:/programs/(a|b).*\\.exe`)")
       .default_value(vector<string>{})

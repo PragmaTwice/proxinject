@@ -27,6 +27,8 @@ Optional arguments:
 -i --pid                        pid of a process to inject proxy (integer) [default: {}]
 -n --name                       short filename of a process with wildcard matching to inject proxy (string, without directory and file extension, e.g. `python`, `py*`, `py??on`) [default: {}]
 -P --path                       full filename of a process with wildcard matching to inject proxy (string, with directory and file extension, e.g. `C:/programs/python.exe`, `C:/programs/*.exe`) [default: {}]
+-r --name-regexp                regular expression for short filename of a process to inject proxy (string, without directory and file extension, e.g. `python`, `py.*|exp.*`) [default: {}]
+-R --path-regexp                regular expression for full filename of a process to inject proxy (string, with directory and file extension, e.g. `C:/programs/python.exe`, `C:/programs/(a|b).*\.exe`) [default: {}]
 -e --exec                       command line started with an executable to create a new process and inject proxy (string, e.g. `python` or `C:\Program Files\a.exe --some-option`) [default: {}]
 -l --enable-log                 enable logging for network connections [default: false]
 -p --set-proxy                  set a proxy address for network connections (string, e.g. `127.0.0.1:1080`) [default: ""]
