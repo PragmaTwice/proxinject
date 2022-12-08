@@ -87,6 +87,37 @@ std::wstring utf8_decode(std::string const &str) {
   return result;
 }
 
+bool filename_wildcard_match(const char *pattern, const char *str) {
+  for (; *pattern; ++pattern) {
+    switch (*pattern) {
+    case '?':
+      if (*str == 0)
+        return false;
+      ++str;
+      break;
+    case '*': {
+      if (pattern[1] == 0)
+        return true;
+      for (const char *ptr = str; *ptr; ++ptr)
+        if (filename_wildcard_match(pattern + 1, ptr))
+          return true;
+      return false;
+    }
+    case '/':
+    case '\\':
+      if (*str != '/' && *str != '\\')
+        return false;
+      ++str;
+      break;
+    default:
+      if (*str != *pattern)
+        return false;
+      ++str;
+    }
+  }
+  return *str == 0;
+}
+
 static inline const std::wstring port_mapping_name = L"PROXINJECT_PORT_IPC_";
 
 std::wstring get_port_mapping_name(DWORD pid) {

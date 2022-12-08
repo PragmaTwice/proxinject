@@ -147,4 +147,17 @@ struct mapped_buffer : std::unique_ptr<void, static_function<UnmapViewOfFile>> {
                                 0, offset, size)) {}
 };
 
+std::optional<std::wstring> get_process_filepath(DWORD pid) {
+  handle process =
+      OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+
+  DWORD size = MAX_PATH;
+  auto filename = std::make_unique<wchar_t[]>(size);
+  if (!QueryFullProcessImageNameW(process.get(), 0, filename.get(), &size)) {
+    return std::nullopt;
+  }
+
+  return std::wstring(filename.get(), size);
+}
+
 #endif

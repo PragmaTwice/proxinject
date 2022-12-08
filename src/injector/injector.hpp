@@ -135,8 +135,20 @@ struct injector {
     match_process([name, &f](const PROCESSENTRY32 &entry) {
       std::string file_u8 = utf8_encode(entry.szExeFile);
       if (file_u8.ends_with(".exe") &&
-          file_u8.substr(0, file_u8.size() - 4) == name) {
+          filename_wildcard_match(
+              name.data(), file_u8.substr(0, file_u8.size() - 4).data())) {
         std::forward<F>(f)(entry.th32ProcessID);
+      }
+    });
+  }
+
+  template <typename F> static void pid_by_path(std::string_view name, F &&f) {
+    match_process([name, &f](const PROCESSENTRY32 &entry) {
+      if (auto wpath = get_process_filepath(entry.th32ProcessID)) {
+        auto path = utf8_encode(*wpath);
+        if (filename_wildcard_match(name.data(), path.data())) {
+          std::forward<F>(f)(entry.th32ProcessID);
+        }
       }
     });
   }

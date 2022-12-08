@@ -108,7 +108,10 @@ auto make_tip_below_r(T &&element, const std::string &tip) {
 
 const std::vector<std::pair<std::string_view, std::string_view>> input_tips{
     {"pid", "a process ID (e.g. `2333`)"},
-    {"name", "a process name (e.g. `python`, `firefox`)"},
+    {"name", "a process name with wildcard matching (e.g. `python`, "
+             "`py*`, `py??on`)"},
+    {"path", "a process full path with wildcard matching (e.g. "
+             "`C:/program.exe`, `C:/programs/*.exe`)"},
     {"exec",
      "command line (e.g. `python`, `C:/programs/something --some-option`)"}};
 
@@ -155,6 +158,14 @@ auto make_controls(injector_server &server, ce::view &view,
     } else if (option == "name") {
       bool success = false;
       injector::pid_by_name(text, [&success, &f](DWORD pid) {
+        if (std::forward<F>(f)(pid))
+          success = true;
+      });
+      if (!success)
+        return;
+    } else if (option == "path") {
+      bool success = false;
+      injector::pid_by_path(text, [&success, &f](DWORD pid) {
         if (std::forward<F>(f)(pid))
           success = true;
       });
