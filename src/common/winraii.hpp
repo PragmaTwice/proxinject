@@ -124,25 +124,6 @@ template <typename F> void match_process(F &&f) {
   }
 }
 
-template <typename F> void match_process_by_name(F &&f) {
-  match_process([&f](const PROCESSENTRY32W &entry) {
-    std::string name_u8 = utf8_encode(entry.szExeFile);
-    if (name_u8.ends_with(".exe")) {
-      auto name = name_u8.substr(0, name_u8.size() - 4);
-      std::forward<F>(f)(name, entry.th32ProcessID);
-    }
-  });
-}
-
-template <typename F> void match_process_by_path(F &&f) {
-  match_process([&f](const PROCESSENTRY32W &entry) {
-    if (auto wpath = get_process_filepath(entry.th32ProcessID)) {
-      auto path = utf8_encode(*wpath);
-      std::forward<F>(f)(path, entry.th32ProcessID);
-    }
-  });
-}
-
 inline handle create_mapping(const std::wstring &name, DWORD buf_size) {
   return CreateFileMappingW(INVALID_HANDLE_VALUE, // use paging file
                             NULL,                 // default security
@@ -180,14 +161,6 @@ inline std::optional<std::wstring> get_process_filepath(DWORD pid) {
   return std::wstring(filename.get(), size);
 }
 
-template <typename F> void enumerate_child_pids(DWORD pid, F &&f) {
-  match_process([pid, &f](const PROCESSENTRY32W &entry) {
-    if (pid == entry.th32ParentProcessID) {
-      std::forward<F>(f)(entry.th32ProcessID);
-    }
-  });
-}
-
 inline auto get_process_name(DWORD pid) {
   std::wstring result;
   match_process([pid, &result](const PROCESSENTRY32W &entry) {
@@ -201,6 +174,33 @@ inline auto get_process_name(DWORD pid) {
     return res_u8.substr(0, res_u8.size() - 4);
   }
   return res_u8;
+}
+
+template <typename F> void match_process_by_name(F &&f) {
+  match_process([&f](const PROCESSENTRY32W &entry) {
+    std::string name_u8 = utf8_encode(entry.szExeFile);
+    if (name_u8.ends_with(".exe")) {
+      auto name = name_u8.substr(0, name_u8.size() - 4);
+      std::forward<F>(f)(name, entry.th32ProcessID);
+    }
+  });
+}
+
+template <typename F> void match_process_by_path(F &&f) {
+  match_process([&f](const PROCESSENTRY32W &entry) {
+    if (auto wpath = get_process_filepath(entry.th32ProcessID)) {
+      auto path = utf8_encode(*wpath);
+      std::forward<F>(f)(path, entry.th32ProcessID);
+    }
+  });
+}
+
+template <typename F> void enumerate_child_pids(DWORD pid, F &&f) {
+  match_process([pid, &f](const PROCESSENTRY32W &entry) {
+    if (pid == entry.th32ParentProcessID) {
+      std::forward<F>(f)(entry.th32ProcessID);
+    }
+  });
 }
 
 inline std::optional<PROCESS_INFORMATION>
