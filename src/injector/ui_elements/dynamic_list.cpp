@@ -31,7 +31,8 @@ view_limits dynamic_list_s::limits(basic_context const &ctx) const {
     }
     auto secondary_limits = _composer->secondary_axis_limits(ctx);
     if (_composer->size()) {
-      return make_limits(float(_main_axis_full_size), secondary_limits);
+      return {{secondary_limits.min, float(_main_axis_full_size)},
+              {secondary_limits.max, full_extent}};
     }
   }
   return {{0, 0}, {full_extent, full_extent}};
