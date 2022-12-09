@@ -91,8 +91,8 @@ struct virtual_memory {
 HMODULE get_current_module() {
   HMODULE mod = nullptr;
 
-  GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                    (LPCTSTR)get_current_module, &mod);
+  GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                     (LPCTSTR)get_current_module, &mod);
 
   return mod;
 }
@@ -114,28 +114,47 @@ template <typename T> struct scope_ptr_bind {
 
 template <typename F> void match_process(F &&f) {
   if (handle snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL)) {
-    PROCESSENTRY32 entry = {sizeof(PROCESSENTRY32)};
-    if (Process32First(snapshot.get(), &entry)) {
+    PROCESSENTRY32W entry = {sizeof(PROCESSENTRY32W)};
+    if (Process32FirstW(snapshot.get(), &entry)) {
       do {
         std::forward<F>(f)(entry);
-      } while (Process32Next(snapshot.get(), &entry));
+      } while (Process32NextW(snapshot.get(), &entry));
     }
   }
 }
 
-handle create_mapping(const std::wstring &name, DWORD buf_size) {
-  return CreateFileMapping(INVALID_HANDLE_VALUE, // use paging file
-                           NULL,                 // default security
-                           PAGE_READWRITE,       // read/write access
-                           0,        // maximum object size (high-order DWORD)
-                           buf_size, // maximum object size (low-order DWORD)
-                           name.c_str()); // name of mapping object
+template <typename F> void match_process_by_name(F &&f) {
+  match_process([&f](const PROCESSENTRY32W &entry) {
+    std::string name_u8 = utf8_encode(entry.szExeFile);
+    if (name_u8.ends_with(".exe")) {
+      auto name = name_u8.substr(0, name_u8.size() - 4);
+      std::forward<F>(f)(name, entry.th32ProcessID);
+    }
+  });
 }
 
-handle open_mapping(const std::wstring &name) {
-  return OpenFileMapping(FILE_MAP_ALL_ACCESS, // read/write access
-                         FALSE,               // do not inherit the name
-                         name.c_str());       // name of mapping object
+template <typename F> void match_process_by_path(F &&f) {
+  match_process([&f](const PROCESSENTRY32W &entry) {
+    if (auto wpath = get_process_filepath(entry.th32ProcessID)) {
+      auto path = utf8_encode(*wpath);
+      std::forward<F>(f)(path, entry.th32ProcessID);
+    }
+  });
+}
+
+inline handle create_mapping(const std::wstring &name, DWORD buf_size) {
+  return CreateFileMappingW(INVALID_HANDLE_VALUE, // use paging file
+                            NULL,                 // default security
+                            PAGE_READWRITE,       // read/write access
+                            0,        // maximum object size (high-order DWORD)
+                            buf_size, // maximum object size (low-order DWORD)
+                            name.c_str()); // name of mapping object
+}
+
+inline handle open_mapping(const std::wstring &name) {
+  return OpenFileMappingW(FILE_MAP_ALL_ACCESS, // read/write access
+                          FALSE,               // do not inherit the name
+                          name.c_str());       // name of mapping object
 }
 
 struct mapped_buffer : std::unique_ptr<void, static_function<UnmapViewOfFile>> {
@@ -147,7 +166,7 @@ struct mapped_buffer : std::unique_ptr<void, static_function<UnmapViewOfFile>> {
                                 0, offset, size)) {}
 };
 
-std::optional<std::wstring> get_process_filepath(DWORD pid) {
+inline std::optional<std::wstring> get_process_filepath(DWORD pid) {
   handle process =
       OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
 

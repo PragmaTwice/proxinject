@@ -19,7 +19,6 @@
 #include "utils.hpp"
 #include "winraii.hpp"
 #include <filesystem>
-#include <regex>
 
 namespace fs = std::filesystem;
 
@@ -132,40 +131,6 @@ struct injector {
     return false;
   }
 
-  template <typename F> static void match_process_by_name(F &&f) {
-    match_process([&f](const PROCESSENTRY32 &entry) {
-      std::string name_u8 = utf8_encode(entry.szExeFile);
-      if (name_u8.ends_with(".exe")) {
-        auto name = name_u8.substr(0, name_u8.size() - 4);
-        std::forward<F>(f)(name, entry.th32ProcessID);
-      }
-    });
-  }
-
-  template <typename F> static void match_process_by_path(F &&f) {
-    match_process([&f](const PROCESSENTRY32 &entry) {
-      if (auto wpath = get_process_filepath(entry.th32ProcessID)) {
-        auto path = utf8_encode(*wpath);
-        std::forward<F>(f)(path, entry.th32ProcessID);
-      }
-    });
-  }
-
-  static bool regex_match_filename(const std::string &pattern,
-                                   const std::string &input) {
-    bool matched = false;
-
-    try {
-      std::regex re(pattern, std::regex_constants::icase |
-                                 std::regex_constants::ECMAScript);
-      matched = std::regex_match(replace_all(input, "/", "\\"), re) ||
-                std::regex_match(replace_all(input, "\\", "/"), re);
-    } catch (const std::regex_error &) {
-    }
-
-    return matched;
-  }
-
   template <typename F>
   static void pid_by_name_wildcard(const std::string &name, F &&f) {
     match_process_by_name([name, &f](const std::string &pname, DWORD pid) {
@@ -203,7 +168,7 @@ struct injector {
   }
 
   template <typename F> static void enumerate_child_pids(DWORD pid, F &&f) {
-    match_process([pid, &f](const PROCESSENTRY32 &entry) {
+    match_process([pid, &f](const PROCESSENTRY32W &entry) {
       if (pid == entry.th32ParentProcessID) {
         std::forward<F>(f)(entry.th32ProcessID);
       }
@@ -212,7 +177,7 @@ struct injector {
 
   static auto get_process_name(DWORD pid) {
     std::wstring result;
-    match_process([pid, &result](const PROCESSENTRY32 &entry) {
+    match_process([pid, &result](const PROCESSENTRY32W &entry) {
       if (pid == entry.th32ProcessID) {
         result = entry.szExeFile;
       }
