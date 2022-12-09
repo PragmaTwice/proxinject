@@ -67,7 +67,7 @@ struct injectee_session_ui : injectee_session {
   }
 
   asio::awaitable<void> process_pid() override {
-    vec_.emplace_back(pid_, injector::get_process_name(pid_));
+    vec_.emplace_back(pid_, get_process_name(pid_));
     refresh();
     co_return;
   }
@@ -192,7 +192,7 @@ auto make_controls(injector_server &server, ce::view &view,
       if (!success)
         return;
     } else if (option == "exec") {
-      auto res = injector::create_process(text);
+      auto res = create_process(text);
       if (!res) {
         return;
       }

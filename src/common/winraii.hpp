@@ -17,6 +17,7 @@
 #define PROXINJECT_COMMON_WINRAII
 
 #include "tlhelp32.h"
+#include "utils.hpp"
 #include <Windows.h>
 #include <memory>
 #include <optional>
@@ -177,6 +178,48 @@ inline std::optional<std::wstring> get_process_filepath(DWORD pid) {
   }
 
   return std::wstring(filename.get(), size);
+}
+
+template <typename F> void enumerate_child_pids(DWORD pid, F &&f) {
+  match_process([pid, &f](const PROCESSENTRY32W &entry) {
+    if (pid == entry.th32ParentProcessID) {
+      std::forward<F>(f)(entry.th32ProcessID);
+    }
+  });
+}
+
+inline auto get_process_name(DWORD pid) {
+  std::wstring result;
+  match_process([pid, &result](const PROCESSENTRY32W &entry) {
+    if (pid == entry.th32ProcessID) {
+      result = entry.szExeFile;
+    }
+  });
+
+  std::string res_u8 = utf8_encode(result);
+  if (res_u8.ends_with(".exe")) {
+    return res_u8.substr(0, res_u8.size() - 4);
+  }
+  return res_u8;
+}
+
+inline std::optional<PROCESS_INFORMATION>
+create_process(const std::wstring &command, DWORD creation_flags = 0) {
+  STARTUPINFO startup_info{};
+  PROCESS_INFORMATION process_info{};
+  if (CreateProcessW(nullptr, std::wstring{command}.data(), nullptr, nullptr,
+                     false, creation_flags, nullptr, nullptr, &startup_info,
+                     &process_info) == 0) {
+    return std::nullopt;
+  }
+
+  return process_info;
+}
+
+inline std::optional<PROCESS_INFORMATION>
+create_process(const std::string &path, DWORD creation_flags = 0) {
+  auto wpath = utf8_decode(path);
+  return create_process(wpath, creation_flags);
 }
 
 #endif

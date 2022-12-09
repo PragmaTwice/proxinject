@@ -179,8 +179,7 @@ struct injectee_session : injectee_client,
       server_.open(pid_, shared_from_this());
       auto config_ = server_.get_config();
       if (config_["subprocess"_f] && *config_["subprocess"_f]) {
-        injector::enumerate_child_pids(
-            pid_, [this](DWORD pid) { server_.inject(pid); });
+        enumerate_child_pids(pid_, [this](DWORD pid) { server_.inject(pid); });
       }
       co_await config(config_);
       co_await process_pid();
