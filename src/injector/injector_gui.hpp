@@ -51,8 +51,12 @@ struct injectee_session_ui : injectee_session {
   ce::selectable_text_box &log_;
 
   asio::awaitable<void> process_connect(const InjecteeConnect &msg) override {
-    std::stringstream stream;
+    std::time_t curr_time = std::time(nullptr);
 
+    std::stringstream stream;
+    stream << "["
+           << std::put_time(std::localtime(&curr_time), "%Y-%m-%d %H:%M:%S")
+           << "] ";
     stream << (int)pid_ << ": " << *msg["syscall"_f] << " " << *msg["addr"_f];
     if (auto v = msg["proxy"_f])
       stream << " via " << *v;
