@@ -34,7 +34,7 @@ view_limits dynamic_list_s::limits(basic_context const &ctx) const {
       return make_limits(float(_main_axis_full_size), secondary_limits);
     }
   }
-  return {{0, 0}, {full_extent, 0}};
+  return {{0, 0}, {full_extent, full_extent}};
 }
 
 void dynamic_list_s::draw(context const &ctx) {
