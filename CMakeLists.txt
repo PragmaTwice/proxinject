@@ -50,7 +50,24 @@ FetchContent_Declare(spdlog
 	GIT_TAG v1.10.0
 )
 
-FetchContent_MakeAvailable(minhook protopuf)
+FetchContent_GetProperties(minhook)
+if(NOT minhook_POPULATED)
+	FetchContent_Populate(minhook)
+endif()
+set(MINHOOK_CMAKE_FILE ${minhook_SOURCE_DIR}/CMakeLists.txt)
+if(EXISTS ${MINHOOK_CMAKE_FILE})
+	file(READ ${MINHOOK_CMAKE_FILE} MINHOOK_CMAKE_CONTENT)
+	if(MINHOOK_CMAKE_CONTENT MATCHES "cmake_minimum_required\\(VERSION +([0-9.]+)")
+		set(MINHOOK_DECLARED_MIN_VERSION "${CMAKE_MATCH_1}")
+		if(MINHOOK_DECLARED_MIN_VERSION VERSION_LESS 3.5)
+			string(REGEX REPLACE "cmake_minimum_required\\(VERSION [^\\)\\n]+\\)" "cmake_minimum_required(VERSION 3.5)" MINHOOK_CMAKE_CONTENT "${MINHOOK_CMAKE_CONTENT}")
+			file(WRITE ${MINHOOK_CMAKE_FILE} "${MINHOOK_CMAKE_CONTENT}")
+		endif()
+	endif()
+endif()
+
+add_subdirectory(${minhook_SOURCE_DIR} ${minhook_BINARY_DIR})
+FetchContent_MakeAvailable(protopuf)
 if(NOT PROXINJECTEE_ONLY)
 	FetchContent_MakeAvailable(argparse spdlog)
 endif()
@@ -79,16 +96,31 @@ endif()
 
 set(WIN32_VERSION 0x0A00)
 
-execute_process(COMMAND git describe --tags
+set(PROXINJECT_VERSION "0.0.0-unknown")
+execute_process(
+	COMMAND git describe --tags
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 	RESULT_VARIABLE GIT_DESCRIBE_EXITCODE
-	OUTPUT_VARIABLE PROXINJECT_VERSION)
-
-if(NOT GIT_DESCRIBE_EXITCODE EQUAL 0)
-	message(FATAL_ERROR "error occurred while dumping version via `git describe`")
+	OUTPUT_VARIABLE GIT_DESCRIBE_OUTPUT
+	ERROR_QUIET
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+if(GIT_DESCRIBE_EXITCODE EQUAL 0 AND NOT GIT_DESCRIBE_OUTPUT STREQUAL "")
+	set(PROXINJECT_VERSION "${GIT_DESCRIBE_OUTPUT}")
+else()
+	execute_process(
+		COMMAND git rev-parse --short HEAD
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+		RESULT_VARIABLE GIT_REV_PARSE_EXITCODE
+		OUTPUT_VARIABLE GIT_REV_PARSE_OUTPUT
+		ERROR_QUIET
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	if(GIT_REV_PARSE_EXITCODE EQUAL 0 AND NOT GIT_REV_PARSE_OUTPUT STREQUAL "")
+		set(PROXINJECT_VERSION "0.0.0-${GIT_REV_PARSE_OUTPUT}")
+	endif()
 endif()
 
-string(STRIP ${PROXINJECT_VERSION} PROXINJECT_VERSION)
 configure_file(src/common/version.hpp.in src/common/version.hpp)
 
 add_library(proxinject_common INTERFACE)

@@ -21,6 +21,8 @@
 #include "schema.hpp"
 #include <asio.hpp>
 #include <map>
+#include <optional>
+#include <string>
 
 using tcp = asio::ip::tcp;
 
@@ -40,7 +42,6 @@ struct injector_server {
   std::mutex config_mutex;
 
   std::uint16_t port_ = -1;
-
   void set_port(std::uint16_t port) { port_ = port; }
 
   bool inject(DWORD pid) {
@@ -79,6 +80,21 @@ struct injector_server {
   }
 
   void clear_proxy() { config_proxy(std::nullopt); }
+
+  void set_proxy_auth(const std::string &username,
+                      const std::string &password) {
+    std::lock_guard guard(config_mutex);
+    config_["username"_f] = username;
+    config_["password"_f] = password;
+    broadcast_config();
+  }
+
+  void clear_proxy_auth() {
+    std::lock_guard guard(config_mutex);
+    config_["username"_f] = std::nullopt;
+    config_["password"_f] = std::nullopt;
+    broadcast_config();
+  }
 
   void enable_log(bool enable = true) {
     std::lock_guard guard(config_mutex);

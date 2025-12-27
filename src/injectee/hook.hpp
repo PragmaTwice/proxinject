@@ -22,12 +22,23 @@
 #include "utils.hpp"
 #include "winnet.hpp"
 #include <map>
+#include <optional>
 #include <protopuf/fixed_string.h>
 #include <string>
 
 inline blocking_queue<InjecteeMessage> *queue = nullptr;
 inline injectee_config *config = nullptr;
 inline std::map<SOCKET, bool> *nbio_map = nullptr;
+
+inline std::optional<std::pair<std::string, std::string>>
+proxy_credentials(const InjectorConfig &cfg) {
+  auto username = cfg["username"_f];
+  auto password = cfg["password"_f];
+  if (username && password && !username->empty() && !password->empty()) {
+    return std::make_pair(*username, *password);
+  }
+  return std::nullopt;
+}
 
 struct hook_ioctlsocket : minhook::api<ioctlsocket, hook_ioctlsocket> {
   static int WSAAPI detour(SOCKET s, long cmd, u_long FAR *argp) {
@@ -106,7 +117,7 @@ struct hook_connect_fn : minhook::api<F, hook_connect_fn<F, N>> {
             if (ret)
               return ret;
 
-            if (!socks5_handshake(s)) {
+            if (!socks5_handshake(s, proxy_credentials(cfg))) {
               shutdown(s, SD_BOTH);
               return SOCKET_ERROR;
             }
@@ -160,7 +171,7 @@ struct hook_WSAConnectByList
                 if (ret)
                   return ret;
 
-                if (!socks5_handshake(s)) {
+                if (!socks5_handshake(s, proxy_credentials(cfg))) {
                   shutdown(s, SD_BOTH);
                   continue;
                 }
@@ -260,7 +271,7 @@ struct hook_WSAConnectByName : minhook::api<F, hook_WSAConnectByName<F, N>> {
             if (ret)
               return ret;
 
-            if (!socks5_handshake(s)) {
+            if (!socks5_handshake(s, proxy_credentials(cfg))) {
               shutdown(s, SD_BOTH);
               return FALSE;
             }
@@ -394,7 +405,7 @@ struct hook_ConnectEx {
             if (ret)
               return ret;
 
-            if (!socks5_handshake(s)) {
+            if (!socks5_handshake(s, proxy_credentials(cfg))) {
               shutdown(s, SD_BOTH);
               return FALSE;
             }

@@ -15,10 +15,14 @@
 
 #include <WinSock2.h>
 #include <cstddef>
+#include <optional>
 #include <schema.hpp>
+#include <string>
+#include <vector>
 
 constexpr const char SOCKS_VERSION = 5;
 constexpr const char SOCKS_NO_AUTHENTICATION = 0;
+constexpr const char SOCKS_USERNAME_PASSWORD = 2;
 
 constexpr const char SOCKS_CONNECT = 1;
 constexpr const char SOCKS_IPV4 = 1;
@@ -30,16 +34,56 @@ constexpr const char SOCKS_GENERAL_FAILURE = 4;
 
 constexpr const size_t SOCKS_REQUEST_MAX_SIZE = 134;
 
-bool socks5_handshake(SOCKET s) {
-  const char req[] = {SOCKS_VERSION, 1, SOCKS_NO_AUTHENTICATION};
-  if (send(s, req, sizeof(req), 0) != sizeof(req))
+bool socks5_handshake(
+    SOCKET s,
+    const std::optional<std::pair<std::string, std::string>> &credentials) {
+  const bool has_credentials =
+      credentials && !credentials->first.empty() && !credentials->second.empty();
+
+  const char req[] = {SOCKS_VERSION, static_cast<char>(has_credentials ? 2 : 1),
+                      SOCKS_NO_AUTHENTICATION, SOCKS_USERNAME_PASSWORD};
+
+  const auto req_size =
+      static_cast<int>(has_credentials ? sizeof(req) : sizeof(req) - 1);
+
+  if (send(s, req, req_size, 0) != req_size)
     return false;
 
   char res[2];
   if (recv(s, res, sizeof(res), MSG_WAITALL) != sizeof(res))
     return false;
 
-  return res[0] == SOCKS_VERSION && res[1] == SOCKS_NO_AUTHENTICATION;
+  if (res[0] != SOCKS_VERSION)
+    return false;
+
+  if (res[1] == SOCKS_NO_AUTHENTICATION)
+    return true;
+
+  if (res[1] == SOCKS_USERNAME_PASSWORD && has_credentials) {
+    const auto &[username, password] = *credentials;
+    if (username.size() >= 256 || password.size() >= 256)
+      return false;
+
+    std::vector<char> auth_request;
+    auth_request.reserve(3 + username.size() + password.size());
+    auth_request.push_back(1); // version
+    auth_request.push_back(static_cast<char>(username.size()));
+    auth_request.insert(auth_request.end(), username.begin(), username.end());
+    auth_request.push_back(static_cast<char>(password.size()));
+    auth_request.insert(auth_request.end(), password.begin(), password.end());
+
+    if (send(s, auth_request.data(), auth_request.size(), 0) !=
+        static_cast<int>(auth_request.size()))
+      return false;
+
+    char auth_res[2];
+    if (recv(s, auth_res, sizeof(auth_res), MSG_WAITALL) != sizeof(auth_res))
+      return false;
+
+    return auth_res[0] == 1 && auth_res[1] == SOCKS_SUCCESS;
+  }
+
+  return false;
 }
 
 char socks5_request_send(SOCKET s, char *buf, size_t size) {

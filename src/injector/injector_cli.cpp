@@ -93,6 +93,14 @@ auto create_parser() {
             "`127.0.0.1:1080`)")
       .default_value(string{});
 
+  parser.add_argument("--proxy-username")
+      .help("username for proxy authentication (string)")
+      .default_value(string{});
+
+  parser.add_argument("--proxy-password")
+      .help("password for proxy authentication (string)")
+      .default_value(string{});
+
   parser.add_argument("-w", "--new-console-window")
       .help("create a new console window while a new console process is "
             "executed in `-e`")
@@ -149,6 +157,24 @@ int main(int argc, char *argv[]) {
     info("logging enabled");
   }
 
+  auto proxy_username = trim_copy(parser.get<string>("--proxy-username"));
+  auto proxy_password = trim_copy(parser.get<string>("--proxy-password"));
+  auto username_used = parser.is_used("--proxy-username");
+  auto password_used = parser.is_used("--proxy-password");
+
+  if ((username_used && proxy_username.empty()) ||
+      (password_used && proxy_password.empty())) {
+    cerr << "proxy credentials must be non-empty" << endl;
+    return 3;
+  }
+
+  if (username_used != password_used) {
+    cerr << "both --proxy-username and --proxy-password must be provided "
+            "together"
+         << endl;
+    return 3;
+  }
+
   if (parser.get<bool>("-s")) {
     server.enable_subprocess();
     info("subprocess injection enabled");
@@ -161,6 +187,13 @@ int main(int argc, char *argv[]) {
       server.set_proxy(ip::address::from_string(addr), port);
       info("proxy address set to {}:{}", addr, port);
     }
+  }
+
+  if (!proxy_username.empty() && !proxy_password.empty()) {
+    server.set_proxy_auth(proxy_username, proxy_password);
+    info("proxy authentication configured for user {}", proxy_username);
+  } else {
+    server.clear_proxy_auth();
   }
 
   bool has_process = false;
