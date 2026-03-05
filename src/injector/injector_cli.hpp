@@ -21,6 +21,7 @@
 #include <spdlog/spdlog.h>
 
 using spdlog::info;
+using spdlog::error;
 
 struct injectee_session_cli : injectee_session {
   using injectee_session::injectee_session;
@@ -41,7 +42,7 @@ struct injectee_session_cli : injectee_session {
 
   void process_close() override {
     info("{}: closed", (int)pid_);
-    if (server_.clients.size() == 0) {
+    if (server_.clients.size() == 0 && !server_.watch_mode_) {
       info("all processes have been exited, exit");
 
       exit(0);

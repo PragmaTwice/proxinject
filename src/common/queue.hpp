@@ -24,7 +24,8 @@ template <typename T> using channel = asio::experimental::channel<T>;
 template <typename T> class blocking_queue {
   std::mutex _sync;
   std::queue<T> _qu;
-  channel<void(asio::error_code)> chan;
+  // Use void(error_code, int) to avoid template ambiguity with GCC 15+
+  channel<void(asio::error_code, int)> chan;
 
 public:
   blocking_queue(asio::io_context &ctx, size_t max)
@@ -34,7 +35,7 @@ public:
     std::unique_lock<std::mutex> lock(_sync);
     _qu.push(item);
     asio::co_spawn(chan.get_executor(),
-                   chan.async_send(asio::error_code{}, asio::use_awaitable),
+                   chan.async_send(asio::error_code{}, 0, asio::use_awaitable),
                    asio::detached);
   }
 

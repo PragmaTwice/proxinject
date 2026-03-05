@@ -18,6 +18,7 @@ cmake_minimum_required(VERSION 3.20)
 project(proxinject)
 
 option(PROXINJECTEE_ONLY "only build proxyinjectee" OFF)
+option(CLI_ONLY "build CLI without GUI" OFF)
 
 if(NOT WIN32)
 	message(FATAL_ERROR "support Windows only")
@@ -26,6 +27,12 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+# Static linking for MinGW to avoid runtime DLL dependencies
+if(MINGW)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -static")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+endif()
 
 include(FetchContent)
 
@@ -102,6 +109,12 @@ target_compile_features(proxinjectee PUBLIC cxx_std_20)
 target_link_libraries(proxinjectee PUBLIC minhook ws2_32 protopuf proxinject_common)
 target_include_directories(proxinjectee PUBLIC ${asio_SOURCE_DIR}/asio/include)
 
+# Static link pthread for MinGW to avoid DLL dependency in injected DLL
+if(MINGW)
+    target_link_options(proxinjectee PRIVATE -static -static-libgcc -static-libstdc++)
+    target_link_libraries(proxinjectee PRIVATE C:/msys64/mingw64/lib/libwinpthread.a)
+endif()
+
 if(NOT PROXINJECTEE_ONLY)
 	file(GLOB INJECTOR_GUI_SRCS src/injector/injector_gui.cpp src/injector/ui_elements/*.cpp)
 
@@ -116,14 +129,14 @@ if(NOT PROXINJECTEE_ONLY)
 	include(ElementsConfigApp)
 
 	target_compile_features(proxinjector PUBLIC cxx_std_20)
-	target_link_libraries(proxinjector PUBLIC protopuf proxinject_common)
+	target_link_libraries(proxinjector PUBLIC protopuf proxinject_common mswsock)
 	target_include_directories(proxinjector PUBLIC ${asio_SOURCE_DIR}/asio/include)
 
 	file(GLOB INJECTOR_CLI_SRCS src/injector/injector_cli.cpp)
 
 	add_executable(proxinjector-cli ${INJECTOR_CLI_SRCS})
 	target_compile_features(proxinjector-cli PUBLIC cxx_std_20)
-	target_link_libraries(proxinjector-cli PUBLIC protopuf argparse spdlog proxinject_common)
+	target_link_libraries(proxinjector-cli PUBLIC protopuf argparse spdlog proxinject_common ws2_32 mswsock)
 	target_include_directories(proxinjector-cli PUBLIC ${asio_SOURCE_DIR}/asio/include)
 endif()
 
