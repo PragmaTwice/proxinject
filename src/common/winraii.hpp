@@ -114,7 +114,7 @@ template <typename T> struct scope_ptr_bind {
 };
 
 template <typename F> void match_process(F &&f) {
-  if (handle snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL)) {
+  if (handle snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)) {
     PROCESSENTRY32W entry = {sizeof(PROCESSENTRY32W)};
     if (Process32FirstW(snapshot.get(), &entry)) {
       do {

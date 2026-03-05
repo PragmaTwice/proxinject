@@ -17,6 +17,7 @@
 #define PROXINJECT_INJECTEE_HOOK
 
 #include "client.hpp"
+#include "http_proxy.hpp"
 #include "minhook.hpp"
 #include "socks5.hpp"
 #include "utils.hpp"
@@ -79,6 +80,52 @@ struct blocking_scope {
   blocking_scope(blocking_scope &&) = delete;
 };
 
+// Proxy type constants
+constexpr std::uint32_t PROXY_TYPE_SOCKS5 = 0;
+constexpr std::uint32_t PROXY_TYPE_HTTP = 1;
+
+// Helper to perform proxy handshake based on config
+inline bool proxy_handshake(SOCKET s, const InjectorConfig &cfg) {
+  auto proxy_type = cfg["proxy_type"_f];
+  auto username = cfg["username"_f];
+  auto password = cfg["password"_f];
+
+  std::string user = username ? *username : "";
+  std::string pass = password ? *password : "";
+  std::uint32_t type = proxy_type ? *proxy_type : PROXY_TYPE_SOCKS5;
+
+  if (type == PROXY_TYPE_HTTP) {
+    // HTTP CONNECT doesn't have a separate handshake phase
+    return true;
+  } else {
+    // SOCKS5
+    if (!user.empty()) {
+      return socks5_handshake_with_auth(s, user, pass);
+    } else {
+      return socks5_handshake(s);
+    }
+  }
+}
+
+// Helper to perform proxy request based on config
+template <typename AddrType>
+inline bool proxy_request(SOCKET s, const InjectorConfig &cfg,
+                          const AddrType &target_addr) {
+  auto proxy_type = cfg["proxy_type"_f];
+  auto username = cfg["username"_f];
+  auto password = cfg["password"_f];
+
+  std::string user = username ? *username : "";
+  std::string pass = password ? *password : "";
+  std::uint32_t type = proxy_type ? *proxy_type : PROXY_TYPE_SOCKS5;
+
+  if (type == PROXY_TYPE_HTTP) {
+    return http_connect(s, target_addr, user, pass) == HTTP_CONNECT_SUCCESS;
+  } else {
+    return socks5_request(s, target_addr) == SOCKS_SUCCESS;
+  }
+}
+
 template <auto F, pp::basic_fixed_string N>
 struct hook_connect_fn : minhook::api<F, hook_connect_fn<F, N>> {
   using base = minhook::api<F, hook_connect_fn<F, N>>;
@@ -106,11 +153,11 @@ struct hook_connect_fn : minhook::api<F, hook_connect_fn<F, N>> {
             if (ret)
               return ret;
 
-            if (!socks5_handshake(s)) {
+            if (!proxy_handshake(s, cfg)) {
               shutdown(s, SD_BOTH);
               return SOCKET_ERROR;
             }
-            if (socks5_request(s, name) != SOCKS_SUCCESS) {
+            if (!proxy_request(s, cfg, name)) {
               shutdown(s, SD_BOTH);
               return SOCKET_ERROR;
             }
@@ -160,11 +207,11 @@ struct hook_WSAConnectByList
                 if (ret)
                   return ret;
 
-                if (!socks5_handshake(s)) {
+                if (!proxy_handshake(s, cfg)) {
                   shutdown(s, SD_BOTH);
                   continue;
                 }
-                if (socks5_request(s, name) != SOCKS_SUCCESS) {
+                if (!proxy_request(s, cfg, name)) {
                   shutdown(s, SD_BOTH);
                   continue;
                 }
@@ -260,11 +307,11 @@ struct hook_WSAConnectByName : minhook::api<F, hook_WSAConnectByName<F, N>> {
             if (ret)
               return ret;
 
-            if (!socks5_handshake(s)) {
+            if (!proxy_handshake(s, cfg)) {
               shutdown(s, SD_BOTH);
               return FALSE;
             }
-            if (socks5_request(s, *addr) != SOCKS_SUCCESS) {
+            if (!proxy_request(s, cfg, *addr)) {
               shutdown(s, SD_BOTH);
               return FALSE;
             }
@@ -394,11 +441,11 @@ struct hook_ConnectEx {
             if (ret)
               return ret;
 
-            if (!socks5_handshake(s)) {
+            if (!proxy_handshake(s, cfg)) {
               shutdown(s, SD_BOTH);
               return FALSE;
             }
-            if (socks5_request(s, name) != SOCKS_SUCCESS) {
+            if (!proxy_request(s, cfg, name)) {
               shutdown(s, SD_BOTH);
               return FALSE;
             }

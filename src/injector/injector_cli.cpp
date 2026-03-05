@@ -21,6 +21,8 @@
 #include "version.hpp"
 #include <argparse/argparse.hpp>
 #include <iostream>
+#include <set>
+#include <thread>
 
 using argparse::ArgumentParser;
 using namespace std;
@@ -104,6 +106,23 @@ auto create_parser() {
       .default_value(false)
       .implicit_value(true);
 
+  parser.add_argument("-t", "--proxy-type")
+      .help("proxy type: socks5 (default) or http")
+      .default_value(string{"socks5"});
+
+  parser.add_argument("-U", "--proxy-user")
+      .help("proxy username for authentication")
+      .default_value(string{});
+
+  parser.add_argument("-W", "--proxy-pass")
+      .help("proxy password for authentication")
+      .default_value(string{});
+
+  parser.add_argument("--watch")
+      .help("watch mode: wait and monitor for processes matching name pattern, "
+            "inject them when they start (e.g. `--watch index` or `--watch py*`)")
+      .default_value(string{});
+
   return parser;
 }
 
@@ -124,9 +143,10 @@ int main(int argc, char *argv[]) {
   auto proc_re_names = parser.get<vector<string>>("-r");
   auto proc_re_paths = parser.get<vector<string>>("-R");
   auto create_paths = parser.get<vector<string>>("-e");
+  auto watch_pattern = parser.get<string>("--watch");
 
-  if (pids.empty() && proc_names.empty() && create_paths.empty()) {
-    cerr << "Expected at least one of `-i`, `-n` or `-e`" << endl;
+  if (pids.empty() && proc_names.empty() && create_paths.empty() && watch_pattern.empty()) {
+    cerr << "Expected at least one of `-i`, `-n`, `-e` or `--watch`" << endl;
     cerr << parser;
     return 2;
   }
@@ -158,9 +178,46 @@ int main(int argc, char *argv[]) {
       !proxy_str.empty()) {
     if (auto res = parse_address(proxy_str)) {
       auto [addr, port] = res.value();
-      server.set_proxy(ip::address::from_string(addr), port);
-      info("proxy address set to {}:{}", addr, port);
+      // Try to parse as IP address first, then resolve as hostname
+      asio::error_code ec;
+      auto ip_addr = ip::make_address(addr, ec);
+      if (!ec) {
+        server.set_proxy(ip_addr, port);
+        info("proxy address set to {}:{}", addr, port);
+      } else {
+        // Resolve hostname
+        try {
+          asio::io_context resolver_ctx;
+          ip::tcp::resolver resolver(resolver_ctx);
+          auto endpoints = resolver.resolve(addr, to_string(port));
+          if (!endpoints.empty()) {
+            auto resolved_addr = endpoints.begin()->endpoint().address();
+            server.set_proxy(resolved_addr, port);
+            info("proxy address {} resolved to {}:{}", addr, resolved_addr.to_string(), port);
+          }
+        } catch (const std::exception &e) {
+          error("failed to resolve proxy hostname {}: {}", addr, e.what());
+        }
+      }
     }
+  }
+
+  if (auto proxy_type = parser.get<string>("-t"); proxy_type == "http") {
+    server.set_proxy_type(1);
+    info("proxy type set to http");
+  } else {
+    server.set_proxy_type(0);
+    info("proxy type set to socks5");
+  }
+
+  if (auto username = parser.get<string>("-U"); !username.empty()) {
+    server.set_proxy_username(username);
+    info("proxy username set");
+  }
+
+  if (auto password = parser.get<string>("-W"); !password.empty()) {
+    server.set_proxy_password(password);
+    info("proxy password set");
   }
 
   bool has_process = false;
@@ -220,7 +277,44 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (!has_process) {
+  // Watch mode: continuously monitor for new processes
+  if (!watch_pattern.empty()) {
+    server.set_watch_mode(true);
+    info("watch mode: monitoring for processes matching '{}'", watch_pattern);
+    info("press Ctrl+C to stop");
+
+    std::set<DWORD> injected_pids;
+
+    while (true) {
+      injector::pid_by_name_wildcard(watch_pattern,
+                                     [&server, &injected_pids](DWORD pid) {
+                                       if (injected_pids.find(pid) == injected_pids.end()) {
+                                         if (server.inject(pid)) {
+                                           info("{}: injected (watch mode)", pid);
+                                           injected_pids.insert(pid);
+                                         }
+                                       }
+                                     });
+
+      // Clean up terminated processes from the set
+      for (auto it = injected_pids.begin(); it != injected_pids.end(); ) {
+        HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, *it);
+        if (hProcess == NULL) {
+          it = injected_pids.erase(it);
+        } else {
+          DWORD exitCode;
+          if (GetExitCodeProcess(hProcess, &exitCode) && exitCode != STILL_ACTIVE) {
+            it = injected_pids.erase(it);
+          } else {
+            ++it;
+          }
+          CloseHandle(hProcess);
+        }
+      }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+  } else if (!has_process) {
     info("no process has been injected, exit");
     io_context.stop();
   }

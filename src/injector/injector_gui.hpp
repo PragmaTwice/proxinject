@@ -141,6 +141,8 @@ const std::vector<std::string_view> input_tip_options = [] {
   return result;
 }();
 
+const std::vector<std::string_view> proxy_type_options = {"socks5", "http"};
+
 auto make_controls(injector_server &server, ce::view &view,
                    process_vector &process_vec) {
   using namespace ce;
@@ -236,15 +238,64 @@ auto make_controls(injector_server &server, ce::view &view,
 
   auto [addr_input, addr_input_ptr] = input_box("IP address");
   auto [port_input, port_input_ptr] = input_box("port");
+  auto [user_input, user_input_ptr] = input_box("username (optional)");
+  auto [pass_input, pass_input_ptr] = input_box("password (optional)");
+
+  auto [proxy_type_select, proxy_type_select_ptr] = selection_menu(
+      [](auto) {},
+      proxy_type_options);
 
   auto proxy_toggle = share(toggle_icon_button(icons::power, 1.2, brblue));
   proxy_toggle->on_click = [&server, proxy_toggle, addr_input_ptr,
-                            port_input_ptr](bool on) {
+                            port_input_ptr, user_input_ptr, pass_input_ptr,
+                            proxy_type_select_ptr](bool on) {
     if (on) {
       auto addr = trim_copy(addr_input_ptr->get_text());
-      auto port = trim_copy(port_input_ptr->get_text());
-      if (all_of_digit(port) && !addr.empty() && !port.empty()) {
-        server.set_proxy(ip::address::from_string(addr), std::stoul(port));
+      auto port_str = trim_copy(port_input_ptr->get_text());
+      if (all_of_digit(port_str) && !addr.empty() && !port_str.empty()) {
+        auto port_num = std::stoul(port_str);
+
+        // Try to parse as IP address first, then resolve as hostname
+        asio::error_code ec;
+        auto ip_addr = ip::make_address(addr, ec);
+        if (!ec) {
+          server.set_proxy(ip_addr, port_num);
+        } else {
+          // Resolve hostname
+          try {
+            asio::io_context resolver_ctx;
+            ip::tcp::resolver resolver(resolver_ctx);
+            auto endpoints = resolver.resolve(addr, port_str);
+            if (!endpoints.empty()) {
+              auto resolved_addr = endpoints.begin()->endpoint().address();
+              server.set_proxy(resolved_addr, port_num);
+            } else {
+              proxy_toggle->value(false);
+              return;
+            }
+          } catch (...) {
+            proxy_toggle->value(false);
+            return;
+          }
+        }
+
+        // Set proxy type
+        auto proxy_type = proxy_type_select_ptr->get_text();
+        if (proxy_type == "http") {
+          server.set_proxy_type(1);
+        } else {
+          server.set_proxy_type(0);
+        }
+
+        // Set authentication credentials
+        auto username = trim_copy(user_input_ptr->get_text());
+        auto password = trim_copy(pass_input_ptr->get_text());
+        if (!username.empty()) {
+          server.set_proxy_username(username);
+        }
+        if (!password.empty()) {
+          server.set_proxy_password(password);
+        }
       } else {
         proxy_toggle->value(false);
       }
@@ -276,35 +327,42 @@ auto make_controls(injector_server &server, ce::view &view,
   return std::make_tuple(
       margin({10, 10, 10, 10},
         htile(
-          hmin_size(200, 
+          hmin_size(200,
             vtile(
               htile(
                 hsize(80, input_select),
                 left_margin(5, hmin_size(100, process_input)),
-                left_margin(10, make_tip_below(inject_button, "add specific processes to inject")), 
+                left_margin(10, make_tip_below(inject_button, "add specific processes to inject")),
                 left_margin(5, make_tip_below(remove_button, "remove specific processes from injecting"))
               ),
-              top_margin(10, 
-                vmin_size(250, 
+              top_margin(10,
+                vmin_size(250,
                   layer(vscroller(hold(process_list)), frame())
                 )
               )
             )
           ),
           left_margin(10,
-            hmin_size(200, 
+            hmin_size(200,
               vtile(
                 htile(
                   hmin_size(100, addr_input),
-                  left_margin(5, hsize(100, port_input)),
+                  left_margin(5, hsize(60, port_input)),
+                  left_margin(5, hsize(60, make_tip_below_r(proxy_type_select, "socks5 or http proxy"))),
                   left_margin(10, make_tip_below_r(hold(proxy_toggle), "enable/disable proxy injection")),
                   left_margin(5, make_tip_below_r(log_toggle, "enable/disable connection log")),
                   left_margin(5, make_tip_below_r(subprocess_toggle, "enable/disable subprocess injection")),
                   left_margin(8, make_tip_below_r(clean_button, "clean the logging box")),
                   left_margin(5, make_tip_below_r(info_button, "software information"))
                 ),
+                top_margin(5,
+                  htile(
+                    hmin_size(100, make_tip_below(user_input, "proxy username for authentication")),
+                    left_margin(5, hmin_size(100, make_tip_below(pass_input, "proxy password for authentication")))
+                  )
+                ),
                 top_margin(10,
-                  vmin_size(250, 
+                  vmin_size(220,
                     layer(vscroller(hold(log_box)), frame())
                   )
                 )

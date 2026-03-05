@@ -19,6 +19,9 @@
 
 constexpr const char SOCKS_VERSION = 5;
 constexpr const char SOCKS_NO_AUTHENTICATION = 0;
+constexpr const char SOCKS_USERNAME_PASSWORD = 2;
+constexpr const char SOCKS_AUTH_VERSION = 1;
+constexpr const char SOCKS_AUTH_SUCCESS = 0;
 
 constexpr const char SOCKS_CONNECT = 1;
 constexpr const char SOCKS_IPV4 = 1;
@@ -40,6 +43,69 @@ bool socks5_handshake(SOCKET s) {
     return false;
 
   return res[0] == SOCKS_VERSION && res[1] == SOCKS_NO_AUTHENTICATION;
+}
+
+bool socks5_authenticate(SOCKET s, const std::string &username,
+                         const std::string &password) {
+  if (username.size() > 255 || password.size() > 255)
+    return false;
+
+  char req[513]; // 1 + 1 + 255 + 1 + 255
+  char *ptr = req;
+  *ptr++ = SOCKS_AUTH_VERSION;
+  *ptr++ = (char)username.size();
+  ptr = std::copy(username.begin(), username.end(), ptr);
+  *ptr++ = (char)password.size();
+  ptr = std::copy(password.begin(), password.end(), ptr);
+
+  int req_size = (int)(ptr - req);
+  if (send(s, req, req_size, 0) != req_size)
+    return false;
+
+  char res[2];
+  if (recv(s, res, sizeof(res), MSG_WAITALL) != sizeof(res))
+    return false;
+
+  return res[0] == SOCKS_AUTH_VERSION && res[1] == SOCKS_AUTH_SUCCESS;
+}
+
+bool socks5_handshake_with_auth(SOCKET s, const std::string &username,
+                                const std::string &password) {
+  bool has_auth = !username.empty();
+
+  // Offer both methods if we have credentials, otherwise just no-auth
+  char req[4];
+  int req_size;
+  if (has_auth) {
+    req[0] = SOCKS_VERSION;
+    req[1] = 2; // 2 methods
+    req[2] = SOCKS_NO_AUTHENTICATION;
+    req[3] = SOCKS_USERNAME_PASSWORD;
+    req_size = 4;
+  } else {
+    req[0] = SOCKS_VERSION;
+    req[1] = 1; // 1 method
+    req[2] = SOCKS_NO_AUTHENTICATION;
+    req_size = 3;
+  }
+
+  if (send(s, req, req_size, 0) != req_size)
+    return false;
+
+  char res[2];
+  if (recv(s, res, sizeof(res), MSG_WAITALL) != sizeof(res))
+    return false;
+
+  if (res[0] != SOCKS_VERSION)
+    return false;
+
+  if (res[1] == SOCKS_NO_AUTHENTICATION) {
+    return true;
+  } else if (res[1] == SOCKS_USERNAME_PASSWORD && has_auth) {
+    return socks5_authenticate(s, username, password);
+  }
+
+  return false;
 }
 
 char socks5_request_send(SOCKET s, char *buf, size_t size) {

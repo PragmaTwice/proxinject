@@ -62,7 +62,8 @@ using InjecteeMessage =
 
 using InjectorConfig =
     pp::message<pp::message_field<"addr", 1, IpAddr>, pp::bool_field<"log", 2>,
-                pp::bool_field<"subprocess", 3>>;
+                pp::bool_field<"subprocess", 3>, pp::uint32_field<"proxy_type", 4>,
+                pp::string_field<"username", 5>, pp::string_field<"password", 6>>;
 
 using InjectorMessage =
     pp::message<pp::string_field<"opcode", 1>,
@@ -73,15 +74,15 @@ M create_message(T &&v) {
   M msg;
 
   msg["opcode"_f] = S.data;
-  msg.get<S>() = std::forward<T>(v);
+  msg.template get<S>() = std::forward<T>(v);
 
   return msg;
 }
 
 template <pp::basic_fixed_string S, typename M>
-M::template get_type_by_name<S>::base_type compare_message(const M &msg) {
+typename M::template get_type_by_name<S>::base_type compare_message(const M &msg) {
   if (msg["opcode"_f] == S.data) {
-    return msg.get_base<S>();
+    return msg.template get_base<S>();
   }
 
   return std::nullopt;
