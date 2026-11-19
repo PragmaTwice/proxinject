@@ -3,6 +3,7 @@
 
 !include "MUI2.nsh"
 !include "logiclib.nsh"
+!include "EnVar.nsh"
 
 ;--------------------------------
 ; Custom defines
@@ -56,6 +57,11 @@ Section "-hidden app"
     File /r "release\*.*" 
     WriteRegStr HKCU "Software\${NAME}" "" $INSTDIR
     WriteUninstaller "$INSTDIR\uninstall.exe"
+
+    ; Add installation directory to user PATH
+    EnVar::SetHKCU
+    EnVar::AddValue "PATH" "$INSTDIR"
+    Pop $0
 SectionEnd
 
 ;--------------------------------
@@ -88,6 +94,11 @@ LangString DESC_StartShort ${LANG_ENGLISH} "Create Shortcut on Start Menu."
 ; Section - Uninstaller
 
 Section "Uninstall"
+    ; Remove installation directory from user PATH
+    EnVar::SetHKCU
+    EnVar::DeleteValue "PATH" "$INSTDIR"
+    Pop $0
+
     Delete "$DESKTOP\${NAME}.lnk"
     RMDir /r "$SMPROGRAMS\${NAME}"
     Delete "$INSTDIR\uninstall.exe"
